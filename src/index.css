@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 25% 22%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 25% 22%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 188 94% 42%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 25% 25%;
+    --input: 217 25% 22%;
+    --ring: 199 89% 48%;
+
+    --radius: 1rem;
+
+    /* Advanced gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(199 89% 48%), hsl(188 94% 42%), hsl(176 100% 47%));
+    --gradient-secondary: linear-gradient(145deg, hsl(217 33% 17%), hsl(217 25% 22%));
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(199 89% 48% / 0.3) 0px, transparent 50%),
+                     radial-gradient(at 80% 0%, hsl(188 94% 42% / 0.2) 0px, transparent 50%),
+                     radial-gradient(at 0% 50%, hsl(176 100% 47% / 0.2) 0px, transparent 50%);
+    --gradient-glass: linear-gradient(135deg, hsl(217 33% 17% / 0.8), hsl(217 25% 22% / 0.6));
+    
+    /* Glows and shadows */
+    --glow-primary: 0 0 60px hsl(199 89% 48% / 0.4), 0 0 100px hsl(188 94% 42% / 0.2);
+    --glow-secondary: 0 0 30px hsl(199 89% 48% / 0.2);
+    --shadow-elevated: 0 20px 40px -10px hsl(222 47% 11% / 0.5), 0 0 60px -20px hsl(199 89% 48% / 0.3);
+    --shadow-soft: 0 10px 30px -5px hsl(222 47% 11% / 0.3);
+    
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-space antialiased;
+  }
+}
+
+@layer utilities {
+  .glass-effect {
+    @apply backdrop-blur-xl bg-gradient-glass border border-white/10;
+  }
+  
+  .glow-effect {
+    box-shadow: var(--glow-primary);
+  }
+  
+  .glow-effect-sm {
+    box-shadow: var(--glow-secondary);
+  }
+  
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+  
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-glow {
+    animation: glow 3s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

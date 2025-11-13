@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: walrusbox
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview -- --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
+      - key: VITE_SUI_NETWORK
+        value: testnet
+      - key: VITE_SUI_RPC_URL
+        value: https://fullnode.testnet.sui.io:443
+      - key: VITE_PACKAGE_ID
+        value: 0x386cf5f10e6dc8639fcc494123439e333e738280a8f249b638cb7b84328a8885
+      - key: VITE_REGISTRY_ID
+        value: 0x97bcf633e416c1bed96725d3872d255a4481686a66d38a589c42220aae16f366
+      - key: VITE_WALRUS_ENDPOINT
+        value: https://walrus-api.example.com

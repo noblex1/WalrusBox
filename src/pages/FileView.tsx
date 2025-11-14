@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { localFilesService, LocalFileMetadata } from '@/services/localFiles';
 import { storageService } from '@/services/storage';
 import { WalletConnectButton } from '@/components/WalletConnectButton';
@@ -22,6 +23,9 @@ import {
   Share2
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { MeshGradient } from '@/components/animations/MeshGradient';
+import { FloatingElements } from '@/components/animations/FloatingElements';
+import { ScaleFade } from '@/components/animations/TextReveal';
 
 const FileView = () => {
   const { id } = useParams<{ id: string }>();
@@ -164,7 +168,8 @@ const FileView = () => {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Animated background */}
-      <div className="absolute inset-0 bg-gradient-mesh opacity-20 animate-pulse-slow" />
+      <MeshGradient colors={['#0EA5E9', '#8B5CF6', '#EC4899']} speed={0.2} />
+      <FloatingElements count={10} />
       
       {/* Header */}
       <header className="relative glass-effect border-b border-white/5 backdrop-blur-xl">

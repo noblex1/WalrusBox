@@ -122,6 +122,7 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button
+                      key={`view-${file.id}`}
                       variant="ghost"
                       size="icon"
                       onClick={() => navigate(`/file/${file.id}`)}
@@ -130,6 +131,7 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button
+                      key={`share-${file.id}`}
                       variant="ghost"
                       size="icon"
                       onClick={() => handleShare(file)}
@@ -138,6 +140,7 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
                       <Share2 className="h-4 w-4" />
                     </Button>
                     <Button
+                      key={`delete-${file.id}`}
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(file)}

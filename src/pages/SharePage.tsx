@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCurrentAccount } from '@mysten/dapp-kit';
+import { motion } from 'framer-motion';
 import { shareService } from '@/services/share';
 import { localFilesService, LocalFileMetadata } from '@/services/localFiles';
 import { storageService } from '@/services/storage';
@@ -10,6 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Download, AlertCircle, Lock, FileIcon, ArrowLeft, Eye, Wallet } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { FileIcon as FileIconComponent } from '@/components/FileIcon';
+import { MeshGradient } from '@/components/animations/MeshGradient';
+import { FloatingElements } from '@/components/animations/FloatingElements';
+import { ScaleFade } from '@/components/animations/TextReveal';
 
 export default function SharePage() {
   const { token} = useParams<{ token: string }>();
@@ -107,19 +111,34 @@ export default function SharePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+      <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center">
+        <MeshGradient colors={['#0EA5E9', '#8B5CF6']} speed={0.3} />
+        <FloatingElements count={10} />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center relative z-10"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="inline-block"
+          >
+            <div className="rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4"></div>
+          </motion.div>
           <p className="text-muted-foreground">Loading shared file...</p>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
-        <div className="max-w-md w-full glass-effect p-8 rounded-2xl border border-destructive/20 text-center">
+      <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center p-4">
+        <MeshGradient colors={['#0EA5E9', '#8B5CF6']} speed={0.3} />
+        <FloatingElements count={10} />
+        <ScaleFade>
+          <div className="max-w-md w-full glass-effect p-8 rounded-2xl border border-destructive/20 text-center relative z-10">
           <div className="inline-flex p-4 rounded-full bg-destructive/10 mb-4">
             {requiresWallet && !account?.address ? (
               <Wallet className="h-12 w-12 text-primary" />
@@ -145,7 +164,8 @@ export default function SharePage() {
               Go to Home
             </Button>
           )}
-        </div>
+          </div>
+        </ScaleFade>
       </div>
     );
   }
@@ -158,8 +178,10 @@ export default function SharePage() {
   const stats = shareService.getShareLinkStats(token!);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 py-12">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      <MeshGradient colors={['#0EA5E9', '#8B5CF6', '#EC4899']} speed={0.3} />
+      <FloatingElements count={15} />
+      <div className="container mx-auto px-4 py-12 relative z-10">
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <div className="mb-8 text-center">
@@ -172,7 +194,8 @@ export default function SharePage() {
           </div>
 
           {/* File Card */}
-          <div className="glass-effect rounded-2xl border border-primary/20 p-8 shadow-elevated animate-fade-in">
+          <ScaleFade delay={0.2}>
+            <div className="glass-effect rounded-2xl border border-primary/20 p-8 shadow-elevated">
             <div className="flex items-start gap-6 mb-6">
               <div className="p-4 rounded-xl bg-primary/10">
                 <FileIconComponent fileName={file.name} fileType={file.type} className="h-12 w-12" />
@@ -239,7 +262,8 @@ export default function SharePage() {
                 Home
               </Button>
             </div>
-          </div>
+            </div>
+          </ScaleFade>
 
           {/* Info Box */}
           <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">

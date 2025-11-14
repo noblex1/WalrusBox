@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page - WalrusBox</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0f172a;
+            color: #fff;
+        }
+        .status { padding: 20px; margin: 10px 0; border-radius: 8px; }
+        .success { background: #10b981; }
+        .info { background: #0ea5e9; }
+        h1 { color: #0ea5e9; }
+        code { background: #1e293b; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>✅ Server is Working!</h1>
+    
+    <div class="status success">
+        <h2>Server Status: ONLINE</h2>
+        <p>If you can see this page, your Vite dev server is running correctly.</p>
+    </div>
+
+    <div class="status info">
+        <h2>Next Steps:</h2>
+        <ol>
+            <li>Go back to <a href="/" style="color: #fff;">http://localhost:8081/</a></li>
+            <li>Press <code>Ctrl + Shift + R</code> (Windows/Linux) or <code>Cmd + Shift + R</code> (Mac)</li>
+            <li>Open Console (F12) and check for errors</li>
+        </ol>
+    </div>
+
+    <div class="status info">
+        <h2>Available Routes:</h2>
+        <ul>
+            <li><a href="/" style="color: #fff;">Home Page</a> - /</li>
+            <li><a href="/dashboard" style="color: #fff;">Dashboard</a> - /dashboard</li>
+            <li><a href="/blobs" style="color: #fff;">Blob List</a> - /blobs</li>
+        </ul>
+    </div>
+
+    <script>
+        console.log('✅ Test page loaded successfully');
+        console.log('Server is running on:', window.location.origin);
+    </script>
+</body>
+</html>

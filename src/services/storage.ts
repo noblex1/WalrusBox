@@ -56,12 +56,22 @@ export class StorageService {
       if (result.newlyCreated) {
         blobId = result.newlyCreated.blobObject.blobId;
         console.log('✅ New blob created:', blobId);
+        console.log(`📊 Storage cost: ${result.newlyCreated.cost}`);
+        console.log(`📦 Encoded size: ${result.newlyCreated.encodedSize} bytes`);
+        console.log(`🔗 Walrus URL: https://aggregator.walrus-testnet.walrus.space/v1/${blobId}`);
+        console.log(`🔍 Walrus Scan: https://walrus-testnet-explorer.walrus.space/blob/${blobId}`);
       } else if (result.alreadyCertified) {
         blobId = result.alreadyCertified.blobId;
         console.log('✅ Blob already exists:', blobId);
+        console.log(`📝 Transaction: ${result.alreadyCertified.event.txDigest}`);
+        console.log(`🔗 Walrus URL: https://aggregator.walrus-testnet.walrus.space/v1/${blobId}`);
+        console.log(`🔍 Walrus Scan: https://walrus-testnet-explorer.walrus.space/blob/${blobId}`);
       } else {
         throw new Error('Unexpected Walrus response format');
       }
+      
+      // Store blob ID metadata for tracking
+      this.storeBlobMetadata(blobId, fileName, blob.size, blob.type);
       
       // Convert blob ID to Uint8Array for Sui contract
       const hashBytes = this.hashToBytes(blobId);
@@ -238,6 +248,68 @@ export class StorageService {
     } catch (error) {
       console.error('Mock storage delete error:', error);
       throw new Error('Failed to delete file from mock storage');
+    }
+  }
+
+  /**
+   * Store blob metadata for tracking and Walrus Scan integration
+   * @param blobId - Walrus blob ID
+   * @param fileName - Original file name
+   * @param fileSize - File size in bytes
+   * @param fileType - MIME type
+   */
+  private storeBlobMetadata(blobId: string, fileName: string, fileSize: number, fileType: string): void {
+    try {
+      const metadata = {
+        blobId,
+        fileName,
+        fileSize,
+        fileType,
+        uploadedAt: new Date().toISOString(),
+        walrusUrl: `https://aggregator.walrus-testnet.walrus.space/v1/${blobId}`,
+        scanUrl: `https://walrus-testnet-explorer.walrus.space/blob/${blobId}`,
+      };
+
+      // Store individual blob metadata
+      localStorage.setItem(`walrus_blob_${blobId}`, JSON.stringify(metadata));
+
+      // Maintain a list of all blob IDs
+      const blobList = this.getAllBlobIds();
+      if (!blobList.includes(blobId)) {
+        blobList.push(blobId);
+        localStorage.setItem('walrus_blob_list', JSON.stringify(blobList));
+      }
+
+      console.log(`💾 Stored metadata for blob: ${blobId}`);
+    } catch (error) {
+      console.error('Failed to store blob metadata:', error);
+    }
+  }
+
+  /**
+   * Get all stored blob IDs
+   * @returns Array of blob IDs
+   */
+  private getAllBlobIds(): string[] {
+    try {
+      const data = localStorage.getItem('walrus_blob_list');
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Get blob metadata by ID
+   * @param blobId - Walrus blob ID
+   * @returns Blob metadata or null
+   */
+  getBlobMetadata(blobId: string): any {
+    try {
+      const data = localStorage.getItem(`walrus_blob_${blobId}`);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
     }
   }
 

@@ -53,7 +53,7 @@ export const shareService = {
    * Get share link URL
    */
   getShareLinkURL: (token: string): string => {
-    const baseUrl = window.location.origin;
+    const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
     return `${baseUrl}/share/${token}`;
   },
 

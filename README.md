@@ -6,6 +6,7 @@
 
 **A Modern, Secure, and Decentralized File Storage Platform Built on Sui Blockchain**
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-wal--box.vercel.app-success?style=flat-square&logo=vercel)](https://wal-box.vercel.app)
 [![Sui Network](https://img.shields.io/badge/Sui-Testnet-4da2ff?style=flat-square)](https://sui.io)
 [![React](https://img.shields.io/badge/React-18.3.1-61dafb?style=flat-square&logo=react)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
@@ -131,10 +132,12 @@ WalrusBox is a **Web3-enabled file management system** that combines the securit
 
 ### Live Application
 
+🌐 **Production**: [https://wal-box.vercel.app](https://wal-box.vercel.app)
+
 ```bash
 # Development server
 npm run dev
-# Access at: http://localhost:8080
+# Access at: http://localhost:5173
 ```
 
 ### Feature Showcase

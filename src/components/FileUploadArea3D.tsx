@@ -4,7 +4,6 @@ import { Upload, File, X, Sparkles, Shield, Zap } from 'lucide-react';
 import { useCurrentAccount, useSignAndExecuteTransactionBlock } from '@mysten/dapp-kit';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { StorageModeBanner } from '@/components/StorageModeBanner';
 import { encryptionService } from '@/services/encryption';
 import { storageService } from '@/services/storage';
 import { filesService } from '@/services/files';
@@ -151,8 +150,6 @@ export const FileUploadArea3D = () => {
 
   return (
     <div className="space-y-6">
-      <StorageModeBanner />
-      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

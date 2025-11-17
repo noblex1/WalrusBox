@@ -34,38 +34,7 @@ export default defineConfig(({ mode }) => ({
     },
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // CRITICAL: React must be in ONE chunk to prevent multiple instances
-          if (id.includes('node_modules/react') || 
-              id.includes('node_modules/react-dom') ||
-              id.includes('node_modules/scheduler')) {
-            return 'react-vendor';
-          }
-          // Router
-          if (id.includes('node_modules/react-router-dom')) {
-            return 'router';
-          }
-          // Sui blockchain libraries
-          if (id.includes('@mysten/dapp-kit') || id.includes('@mysten/sui')) {
-            return 'sui';
-          }
-          // Animation libraries
-          if (id.includes('framer-motion') || id.includes('three') || id.includes('@react-three')) {
-            return 'animations';
-          }
-          // UI components
-          if (id.includes('@radix-ui')) {
-            return 'ui';
-          }
-          // Charts and visualization
-          if (id.includes('recharts')) {
-            return 'charts';
-          }
-          // Other node_modules
-          if (id.includes('node_modules')) {
-            return 'vendor';
-          }
-        },
+        manualChunks: undefined, // Disable manual chunking to let Vite handle it
       },
     },
     chunkSizeWarningLimit: 1000,

@@ -14,14 +14,14 @@ This implementation plan breaks down the hackathon improvements into discrete, m
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
 - [x] 2. Folder System Implementation
-  - [-] 2.1 Extend smart contract with folder support
+  - [x] 2.1 Extend smart contract with folder support
     - Add FolderObject struct to Move contract
     - Implement create_folder, move_file, delete_folder functions
     - Add folder_id field to FileObject struct
     - Deploy updated contract to testnet
     - _Requirements: 2.1_
 
-  - [x] 2.2 Create folder management UI components
+  - [-] 2.2 Create folder management UI components
     - Build FolderTree component for hierarchical display
     - Create NewFolderModal for folder creation
     - Add folder navigation breadcrumbs
@@ -35,7 +35,7 @@ This implementation plan breaks down the hackathon improvements into discrete, m
     - Handle multi-file drag operations
     - _Requirements: 2.2_
 
-  - [ ]* 2.4 Write folder system tests
+  - [ ] 2.4 Write folder system tests
     - Unit tests for folder service functions
     - Integration tests for folder creation and file moves
     - Test folder hierarchy validation (max 10 levels)

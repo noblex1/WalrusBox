@@ -193,50 +193,50 @@ const Dashboard = () => {
         {/* Animated background */}
         <div className="absolute inset-0 bg-gradient-mesh opacity-30 animate-pulse-slow" />
       
-      {/* Header */}
-      <header className="relative glass-effect border-b border-white/5 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
+      {/* Header - Mobile Optimized */}
+      <header className="sticky top-0 z-50 glass-effect border-b border-white/5 backdrop-blur-xl">
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate('/')}
-              className="hover:bg-primary/10 hover:text-primary transition-all duration-300 hover:scale-110"
+              className="hover:bg-primary/10 hover:text-primary transition-all duration-300 hover:scale-110 h-9 w-9 sm:h-10 sm:w-10"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
-            <div className="flex items-center gap-2 group">
-              <Cloud className="h-8 w-8 text-primary transition-transform group-hover:scale-110 duration-300" />
-              <span className="text-xl font-bold tracking-tight">WalBox</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 group">
+              <Cloud className="h-6 w-6 sm:h-8 sm:w-8 text-primary transition-transform group-hover:scale-110 duration-300" />
+              <span className="text-base sm:text-xl font-bold tracking-tight">WalBox</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <ThemeToggle />
             <WalletConnectButton />
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-10 relative">
-        <div className="max-w-6xl mx-auto space-y-8">
+      {/* Main Content - Mobile Optimized */}
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10 relative">
+        <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
           <div className="animate-fade-in">
-            <h1 className="text-4xl md:text-5xl font-bold mb-3 tracking-tight">Your Dashboard</h1>
-            <p className="text-lg text-muted-foreground">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-2 sm:mb-3 tracking-tight">Your Dashboard</h1>
+            <p className="text-sm sm:text-lg text-muted-foreground">
               Upload, manage, and share your encrypted files securely
             </p>
           </div>
 
           {!account?.address && (
-            <Card className="glass-effect p-8 border-primary/20 shadow-elevated animate-scale-in">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <Card className="glass-effect p-6 sm:p-8 border-primary/20 shadow-elevated animate-scale-in">
+              <div className="flex flex-col items-center text-center gap-4 sm:flex-row sm:text-left sm:justify-between">
                 <div>
-                  <h3 className="font-semibold text-xl mb-2 flex items-center gap-2">
+                  <h3 className="font-semibold text-lg sm:text-xl mb-2 flex items-center justify-center sm:justify-start gap-2">
                     <Wallet className="h-5 w-5 text-primary" />
                     Connect Your Wallet
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Connect your Nautilus wallet to unlock secure file storage
+                    Connect your Sui wallet to unlock secure file storage
                   </p>
                 </div>
                 <WalletConnectButton />
@@ -244,20 +244,20 @@ const Dashboard = () => {
             </Card>
           )}
 
-          {/* Recent Files Section */}
+          {/* Recent Files Section - Mobile Optimized */}
           {account?.address && recentFiles.length > 0 && (
-            <Card className="glass-effect p-6 border-primary/20 animate-fade-in">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
+            <Card className="glass-effect p-4 sm:p-6 border-primary/20 animate-fade-in">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   Recent Files
                 </h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 {recentFiles.map((file) => (
                   <Card 
                     key={file.id} 
-                    className="p-3 hover:bg-primary/5 transition-colors cursor-pointer"
+                    className="p-3 hover:bg-primary/5 transition-colors cursor-pointer min-h-[60px]"
                     onClick={() => setActiveTab('files')}
                   >
                     <p className="text-sm truncate font-medium">{file.file_id}</p>
@@ -271,30 +271,32 @@ const Dashboard = () => {
           )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div className="flex items-center justify-between mb-4">
-              <TabsList className="glass-effect grid w-full max-w-2xl grid-cols-3 p-1.5 h-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mb-4">
+              <TabsList className="glass-effect grid w-full sm:max-w-2xl grid-cols-3 p-1 sm:p-1.5 h-auto">
                 <TabsTrigger 
                   value="upload" 
-                  className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-all duration-300 py-3"
+                  className="gap-1 sm:gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-all duration-300 py-2.5 sm:py-3 text-xs sm:text-sm"
                 >
-                  <Upload className="h-4 w-4" />
+                  <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   <span className="font-medium">Upload</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="files" 
-                  className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-all duration-300 py-3"
+                  className="gap-1 sm:gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-all duration-300 py-2.5 sm:py-3 text-xs sm:text-sm"
                 >
-                  <FolderOpen className="h-4 w-4" />
-                  <span className="font-medium">All Files</span>
-                  <Badge variant="secondary" className="ml-1">{files.length}</Badge>
+                  <FolderOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="font-medium hidden xs:inline">All Files</span>
+                  <span className="font-medium xs:hidden">Files</span>
+                  <Badge variant="secondary" className="ml-0.5 sm:ml-1 text-xs">{files.length}</Badge>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="favorites" 
-                  className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-all duration-300 py-3"
+                  className="gap-1 sm:gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-all duration-300 py-2.5 sm:py-3 text-xs sm:text-sm"
                 >
-                  <Star className="h-4 w-4" />
-                  <span className="font-medium">Favorites</span>
-                  <Badge variant="secondary" className="ml-1">{favoriteFiles.length}</Badge>
+                  <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="font-medium hidden xs:inline">Favorites</span>
+                  <span className="font-medium xs:hidden">Fav</span>
+                  <Badge variant="secondary" className="ml-0.5 sm:ml-1 text-xs">{favoriteFiles.length}</Badge>
                 </TabsTrigger>
               </TabsList>
 
@@ -302,11 +304,11 @@ const Dashboard = () => {
                 <Button
                   variant="outline"
                   onClick={handleExport}
-                  className="gap-2 glass-effect border-primary/20"
+                  className="gap-2 glass-effect border-primary/20 w-full sm:w-auto min-h-[44px]"
                   disabled={filteredFiles.length === 0}
                 >
                   <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">Export CSV</span>
+                  <span>Export CSV</span>
                 </Button>
               )}
             </div>
@@ -315,12 +317,12 @@ const Dashboard = () => {
               <FileUploadArea />
             </TabsContent>
 
-            <TabsContent value="files" className="mt-6 space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Folder Tree Sidebar */}
-                <Card className="glass-effect p-4 border-primary/20 lg:col-span-1">
+            <TabsContent value="files" className="mt-4 sm:mt-6 space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+                {/* Folder Tree Sidebar - Hidden on mobile, collapsible */}
+                <Card className="glass-effect p-4 border-primary/20 lg:col-span-1 hidden lg:block">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold flex items-center gap-2">
+                    <h3 className="font-semibold flex items-center gap-2 text-sm">
                       <FolderOpen className="h-4 w-4 text-primary" />
                       Folders
                     </h3>
@@ -344,7 +346,7 @@ const Dashboard = () => {
                 </Card>
 
                 {/* File List */}
-                <div className="lg:col-span-3 space-y-4">
+                <div className="lg:col-span-3 space-y-3 sm:space-y-4">
                   {/* Breadcrumbs */}
                   {breadcrumbs.length > 0 && (
                     <FolderBreadcrumbs
@@ -352,6 +354,18 @@ const Dashboard = () => {
                       onNavigate={handleFolderSelect}
                     />
                   )}
+                  
+                  {/* Mobile Folder Button */}
+                  <div className="lg:hidden">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleOpenNewFolderModal(null)}
+                      className="w-full gap-2 glass-effect border-primary/20 min-h-[44px]"
+                    >
+                      <FolderPlus className="h-4 w-4" />
+                      New Folder
+                    </Button>
+                  </div>
                   
                   <SearchBar
                     value={filters.search}

@@ -1,0 +1,138 @@
+/* Mobile-First Responsive Utilities */
+
+/* Extra small breakpoint for very small devices */
+@media (min-width: 375px) {
+  .xs\:inline {
+    display: inline;
+  }
+  .xs\:hidden {
+    display: none;
+  }
+  .xs\:block {
+    display: block;
+  }
+}
+
+/* Ensure minimum tap targets on mobile */
+@media (max-width: 640px) {
+  button,
+  a,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Prevent horizontal scroll */
+body {
+  overflow-x: hidden;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Optimize animations for mobile */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Mobile-optimized text selection */
+@media (max-width: 640px) {
+  * {
+    -webkit-tap-highlight-color: rgba(14, 165, 233, 0.1);
+  }
+}
+
+/* Prevent zoom on input focus (iOS) */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Mobile-friendly scrollbars */
+@media (max-width: 640px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(14, 165, 233, 0.3);
+    border-radius: 2px;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}
+
+/* Optimize heavy animations on mobile */
+@media (max-width: 768px) {
+  .animate-pulse-slow,
+  .animate-float,
+  .animate-spin-slow {
+    animation: none !important;
+  }
+  
+  /* Reduce motion for background effects */
+  .bg-gradient-mesh {
+    animation-duration: 60s !important;
+  }
+}
+
+/* Mobile-optimized card spacing */
+@media (max-width: 640px) {
+  .glass-effect {
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* Touch-friendly spacing */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Prevent layout shift */
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Mobile-optimized modals */
+@media (max-width: 640px) {
+  [role="dialog"],
+  [role="alertdialog"] {
+    max-width: calc(100vw - 2rem) !important;
+    margin: 1rem;
+  }
+}

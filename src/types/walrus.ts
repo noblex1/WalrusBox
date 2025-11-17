@@ -7,6 +7,16 @@
 export type ContentTypeCategory = 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other';
 
 /**
+ * Walrus blob reference
+ */
+export interface WalrusBlob {
+  blobId: string;
+  walrusUrl: string;
+  originalUrl?: string;
+  walrusResponse?: WalrusUploadResponse;
+}
+
+/**
  * Blob storage status
  */
 export type BlobStatus = 'active' | 'expiring' | 'expired' | 'failed';

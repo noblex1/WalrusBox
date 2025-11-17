@@ -170,26 +170,28 @@ export const filesService = {
   createFile: async (
     signer: (tx: Transaction, options?: any) => Promise<string>,
     fileId: string,
-    walrusObjectHash: Uint8Array
+    walrusObjectHash: Uint8Array,
+    folderId: string = '',
+    path: string = '/'
   ): Promise<string> => {
     try {
       const tx = new Transaction();
 
-      // Convert fileId and hash to proper BCS format
-      const fileIdBytes = new TextEncoder().encode(fileId);
-      const hashBytes = new Uint8Array(walrusObjectHash);
+      // Convert strings to bytes
+      const fileIdBytes = Array.from(new TextEncoder().encode(fileId));
+      const hashBytes = Array.from(walrusObjectHash);
+      const folderIdBytes = Array.from(new TextEncoder().encode(folderId));
+      const pathBytes = Array.from(new TextEncoder().encode(path));
 
-      // Serialize as vector<u8> using BCS
-      const fileIdBcs = bcs.vector(bcs.u8()).serialize(Array.from(fileIdBytes));
-      const hashBcs = bcs.vector(bcs.u8()).serialize(Array.from(hashBytes));
-
-      // Call create_file function with properly serialized BCS data
+      // Call create_file with all 5 required arguments
       tx.moveCall({
         target: `${PACKAGE_ID}::walrusbox::create_file`,
         arguments: [
           tx.object(REGISTRY_ID),
-          tx.pure(fileIdBcs),   // Serialized vector<u8>
-          tx.pure(hashBcs),     // Serialized vector<u8>
+          tx.pure(bcs.vector(bcs.u8()).serialize(fileIdBytes)),
+          tx.pure(bcs.vector(bcs.u8()).serialize(hashBytes)),
+          tx.pure(bcs.vector(bcs.u8()).serialize(folderIdBytes)),
+          tx.pure(bcs.vector(bcs.u8()).serialize(pathBytes)),
         ],
       });
 

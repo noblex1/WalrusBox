@@ -13,22 +13,22 @@ This implementation plan breaks down the hackathon improvements into discrete, m
   - Implement image lazy loading for file previews
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 2. Folder System Implementation
-  - [ ] 2.1 Extend smart contract with folder support
+- [x] 2. Folder System Implementation
+  - [-] 2.1 Extend smart contract with folder support
     - Add FolderObject struct to Move contract
     - Implement create_folder, move_file, delete_folder functions
     - Add folder_id field to FileObject struct
     - Deploy updated contract to testnet
     - _Requirements: 2.1_
 
-  - [ ] 2.2 Create folder management UI components
+  - [x] 2.2 Create folder management UI components
     - Build FolderTree component for hierarchical display
     - Create NewFolderModal for folder creation
     - Add folder navigation breadcrumbs
     - Implement folder color picker
     - _Requirements: 2.1_
 
-  - [ ] 2.3 Implement drag-and-drop file organization
+  - [x] 2.3 Implement drag-and-drop file organization
     - Integrate react-dnd library for drag and drop
     - Add drop zones to folders with visual feedback
     - Implement file-to-folder and folder-to-folder drag

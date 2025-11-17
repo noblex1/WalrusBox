@@ -6,7 +6,12 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { SearchBar } from '@/components/SearchBar';
 import { FileUploadArea } from '@/components/FileUploadArea';
 import { FileListTable } from '@/components/FileListTable';
+import { FolderTree } from '@/components/FolderTree';
+import { FolderBreadcrumbs, BreadcrumbItem } from '@/components/FolderBreadcrumbs';
+import { NewFolderModal } from '@/components/NewFolderModal';
+import { DndProvider } from '@/components/DndProvider';
 import { filesService, FileMetadata } from '@/services/files';
+import { foldersService } from '@/services/folders';
 import { favoritesService } from '@/services/favorites';
 import { exportService } from '@/services/export';
 import { useFileFilter } from '@/hooks/useFileFilter';
@@ -15,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Cloud, Upload, FolderOpen, ArrowLeft, Wallet, Download, Star, Clock } from 'lucide-react';
+import { Cloud, Upload, FolderOpen, ArrowLeft, Wallet, Download, Star, Clock, FolderPlus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
@@ -26,8 +31,17 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('upload');
   const searchInputRef = useRef<HTMLInputElement>(null);
   
+  // Folder management
+  const [folders, setFolders] = useState<ReturnType<typeof foldersService.getAllFolders>>([]);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  
   // File filtering
   const { filters, filteredFiles, setSearch, clearSearch, updateFilters } = useFileFilter(files);
+  
+  // Filter files by current folder
+  const filesInCurrentFolder = filesService.getFilesInFolder(filteredFiles, currentFolderId);
   
   // Favorites
   const favoriteIds = favoritesService.getFavorites();
@@ -36,13 +50,20 @@ const Dashboard = () => {
   // Recent files
   const recentIds = favoritesService.getRecentFiles();
   const recentFiles = files.filter(f => recentIds.includes(f.id)).slice(0, 5);
+  
+  // Breadcrumbs
+  const breadcrumbs: BreadcrumbItem[] = account?.address 
+    ? foldersService.getBreadcrumbs(account.address, currentFolderId)
+    : [];
 
   useEffect(() => {
-    // Load files when wallet is connected
+    // Load files and folders when wallet is connected
     if (account?.address) {
       loadFiles(account.address);
+      loadFolders(account.address);
     } else {
       setFiles([]);
+      setFolders([]);
     }
   }, [account?.address]);
 
@@ -59,10 +80,72 @@ const Dashboard = () => {
     }
   };
 
+  const loadFolders = (address: string) => {
+    try {
+      const folderList = foldersService.getAllFolders(address);
+      setFolders(folderList);
+    } catch (error) {
+      console.error('Error loading folders:', error);
+      setFolders([]);
+    }
+  };
+
   const refreshFiles = async () => {
     if (account?.address) {
       await loadFiles(account.address);
+      loadFolders(account.address);
     }
+  };
+
+  // Folder operations
+  const handleCreateFolder = async (name: string, color: string, parentId: string | null) => {
+    if (!account?.address) return;
+    
+    try {
+      foldersService.createFolder(account.address, name, parentId, color);
+      loadFolders(account.address);
+      toast({
+        title: 'Folder Created',
+        description: `"${name}" has been created successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Failed to Create Folder',
+        description: error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleFolderSelect = (folderId: string | null) => {
+    setCurrentFolderId(folderId);
+  };
+
+  const handleFileDrop = (fileId: string, targetFolderId: string | null) => {
+    try {
+      filesService.moveFileToFolder(fileId, targetFolderId);
+      const targetFolder = targetFolderId 
+        ? folders.find(f => f.id === targetFolderId)
+        : null;
+      toast({
+        title: 'File Moved',
+        description: targetFolder 
+          ? `File moved to "${targetFolder.name}"`
+          : 'File moved to root',
+      });
+      refreshFiles();
+    } catch (error) {
+      toast({
+        title: 'Failed to Move File',
+        description: 'An error occurred while moving the file',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleOpenNewFolderModal = (parentId: string | null) => {
+    setNewFolderParentId(parentId);
+    setShowNewFolderModal(true);
   };
 
   // Keyboard shortcuts
@@ -105,9 +188,10 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Animated background */}
-      <div className="absolute inset-0 bg-gradient-mesh opacity-30 animate-pulse-slow" />
+    <DndProvider>
+      <div className="min-h-screen bg-background relative overflow-hidden">
+        {/* Animated background */}
+        <div className="absolute inset-0 bg-gradient-mesh opacity-30 animate-pulse-slow" />
       
       {/* Header */}
       <header className="relative glass-effect border-b border-white/5 backdrop-blur-xl">
@@ -232,15 +316,55 @@ const Dashboard = () => {
             </TabsContent>
 
             <TabsContent value="files" className="mt-6 space-y-4">
-              <SearchBar
-                value={filters.search}
-                onChange={setSearch}
-                onClear={clearSearch}
-                filters={filters}
-                onFilterChange={updateFilters}
-                placeholder="Search files..."
-              />
-              <FileListTable files={filteredFiles} onRefresh={refreshFiles} />
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Folder Tree Sidebar */}
+                <Card className="glass-effect p-4 border-primary/20 lg:col-span-1">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4 text-primary" />
+                      Folders
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenNewFolderModal(null)}
+                      className="h-8 w-8 hover:bg-primary/10"
+                      title="Create new folder"
+                    >
+                      <FolderPlus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <FolderTree
+                    folders={foldersService.toFolderNodes(folders)}
+                    selectedFolderId={currentFolderId}
+                    onFolderSelect={handleFolderSelect}
+                    onCreateFolder={handleOpenNewFolderModal}
+                    onFileDrop={handleFileDrop}
+                  />
+                </Card>
+
+                {/* File List */}
+                <div className="lg:col-span-3 space-y-4">
+                  {/* Breadcrumbs */}
+                  {breadcrumbs.length > 0 && (
+                    <FolderBreadcrumbs
+                      items={breadcrumbs}
+                      onNavigate={handleFolderSelect}
+                    />
+                  )}
+                  
+                  <SearchBar
+                    value={filters.search}
+                    onChange={setSearch}
+                    onClear={clearSearch}
+                    filters={filters}
+                    onFilterChange={updateFilters}
+                    placeholder="Search files..."
+                  />
+                  
+                  <FileListTable files={filesInCurrentFolder} onRefresh={refreshFiles} />
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="favorites" className="mt-6">
@@ -249,7 +373,21 @@ const Dashboard = () => {
           </Tabs>
         </div>
       </main>
-    </div>
+
+      {/* New Folder Modal */}
+      <NewFolderModal
+        open={showNewFolderModal}
+        parentFolderId={newFolderParentId}
+        parentFolderName={
+          newFolderParentId 
+            ? folders.find(f => f.id === newFolderParentId)?.name 
+            : undefined
+        }
+        onClose={() => setShowNewFolderModal(false)}
+        onCreateFolder={handleCreateFolder}
+      />
+      </div>
+    </DndProvider>
   );
 };
 

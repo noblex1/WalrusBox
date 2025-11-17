@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Cloud, Upload, FolderOpen, ArrowLeft, Wallet, Download, Star, Clock } from 'lucide-react';
+import { Cloud, Upload, FolderOpen, ArrowLeft, Wallet, Download, Star, Clock, TrendingUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { MeshGradient } from '@/components/animations/MeshGradient';
 import { FloatingElements, FlowingParticles } from '@/components/animations/FloatingElements';
@@ -122,6 +122,15 @@ const Dashboard = () => {
               </span>
             </motion.div>
             <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/analytics')}
+                className="gap-2"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Analytics
+              </Button>
               <ThemeToggle />
               <WalletConnectButton />
             </div>

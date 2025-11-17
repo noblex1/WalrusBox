@@ -22,6 +22,10 @@ export interface FileMetadata {
   allowedWallets: string[]; // Allowed addresses for private files
   uploadedAt: Date; // Creation timestamp
   encryptionStatus?: 'pending' | 'encrypted' | 'failed'; // Frontend status
+  folderId?: string | null; // Parent folder ID (for folder organization)
+  fileName?: string; // Original file name
+  fileSize?: number; // File size in bytes
+  mimeType?: string; // MIME type
 }
 
 /**
@@ -343,5 +347,50 @@ export const filesService = {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  },
+
+  /**
+   * Move file to a folder (updates local metadata)
+   * @param fileId - File ID to move
+   * @param folderId - Target folder ID (null for root)
+   */
+  moveFileToFolder: (fileId: string, folderId: string | null): void => {
+    try {
+      const metadata = localStorage.getItem(`file_folder_${fileId}`);
+      const data = metadata ? JSON.parse(metadata) : {};
+      data.folderId = folderId;
+      localStorage.setItem(`file_folder_${fileId}`, JSON.stringify(data));
+    } catch (error) {
+      console.error('Error moving file to folder:', error);
+    }
+  },
+
+  /**
+   * Get folder ID for a file
+   * @param fileId - File ID
+   * @returns Folder ID or null
+   */
+  getFileFolderId: (fileId: string): string | null => {
+    try {
+      const metadata = localStorage.getItem(`file_folder_${fileId}`);
+      if (!metadata) return null;
+      const data = JSON.parse(metadata);
+      return data.folderId || null;
+    } catch (error) {
+      return null;
+    }
+  },
+
+  /**
+   * Get files in a specific folder
+   * @param files - All files
+   * @param folderId - Folder ID (null for root)
+   * @returns Filtered files
+   */
+  getFilesInFolder: (files: FileMetadata[], folderId: string | null): FileMetadata[] => {
+    return files.filter(file => {
+      const fileFolderId = filesService.getFileFolderId(file.id);
+      return fileFolderId === folderId;
+    });
   },
 };

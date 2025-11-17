@@ -11,6 +11,7 @@ import "@mysten/dapp-kit/dist/index.css";
 // Lazy load pages for code splitting
 const Home = lazy(() => import("./pages/Home"));
 const Dashboard = lazy(() => import("./pages/DashboardAnimated"));
+const Analytics = lazy(() => import("./pages/Analytics"));
 const FileView = lazy(() => import("./pages/FileView"));
 const SharePage = lazy(() => import("./pages/SharePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -46,6 +47,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/analytics" element={<Analytics />} />
                 <Route path="/file/:id" element={<FileView />} />
                 <Route path="/share/:token" element={<SharePage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

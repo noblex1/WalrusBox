@@ -152,8 +152,8 @@
     - Display encryption statistics (encrypted vs unencrypted files)
     - _Requirements: 5.1, 9.6_
 
-- [ ] 8. Implement key management system
-  - [ ] 8.1 Create key storage service
+- [x] 8. Implement key management system
+  - [x] 8.1 Create key storage service
     - Create keyManagement.ts for secure key operations
     - Implement key generation with Web Crypto API
     - Implement secure key storage in IndexedDB (encrypted)
@@ -161,13 +161,13 @@
     - Implement key import for restoration
     - _Requirements: 6.1, 6.2, 6.3, 6.6_
 
-  - [ ] 8.2 Implement wallet-based key derivation
+  - [x] 8.2 Implement wallet-based key derivation
     - Use user wallet signature to derive encryption keys
     - Implement deterministic key generation from wallet
     - Add key rotation mechanism
     - _Requirements: 6.4, 6.5_
 
-  - [ ] 8.3 Add key security measures
+  - [x] 8.3 Add key security measures
     - Implement automatic key clearing from memory
     - Add key compromise detection and re-encryption flow
     - Implement key rotation for long-term files

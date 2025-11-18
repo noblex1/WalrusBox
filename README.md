@@ -1080,7 +1080,7 @@ See [Troubleshooting Guide](./ENCRYPTION_FIX_COMPLETE.md#troubleshooting) for so
 
 <div align="center">
 
-**Built with ❤️ for the Web3 community**
+**Built By SUi North for the Web3 community**
 
 [⬆ Back to Top](#walbox)
 

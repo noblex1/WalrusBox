@@ -4,6 +4,7 @@
 import { walrusService } from './walrus';
 import { blobTrackingService } from './blobTracking';
 import { sealStorageService } from './seal/sealStorage';
+import { isEncrypted } from './seal/fileTypeDetection';
 import type { BlobMetadata, SealFileMetadata } from '@/types/walrus';
 
 /**
@@ -113,7 +114,7 @@ export async function downloadBlobById(
     // 1. Get metadata to check if encrypted
     const metadata = await blobTrackingService.getBlobMetadata(blobId);
     
-    if (metadata && isEncryptedMetadata(metadata)) {
+    if (metadata && isEncrypted(metadata)) {
       // Download encrypted file using Seal
       console.log('🔐 Downloading encrypted file...');
       
@@ -175,7 +176,7 @@ export async function verifyBlobExists(blobId: string): Promise<boolean> {
     
     let exists = false;
     
-    if (metadata && isEncryptedMetadata(metadata)) {
+    if (metadata && isEncrypted(metadata)) {
       // Verify encrypted file using Seal
       const verificationResult = await sealStorageService.verifyFile(metadata as SealFileMetadata);
       exists = verificationResult.success;
@@ -251,7 +252,7 @@ export async function migrateToEncrypted(
     }
 
     // Check if already encrypted
-    if (isEncryptedMetadata(existingMetadata)) {
+    if (isEncrypted(existingMetadata)) {
       throw new Error(`Blob ${blobId} is already encrypted`);
     }
 
@@ -318,12 +319,7 @@ export async function migrateToEncrypted(
   }
 }
 
-/**
- * Helper: Check if metadata represents an encrypted file
- */
-function isEncryptedMetadata(metadata: BlobMetadata): metadata is SealFileMetadata {
-  return 'isEncrypted' in metadata && (metadata as SealFileMetadata).isEncrypted === true;
-}
+
 
 /**
  * Helper: Categorize content type
@@ -344,5 +340,5 @@ export const walrusIntegration = {
   verifyBlobExists,
   getAllTrackedBlobs,
   migrateToEncrypted,
-  isEncryptedMetadata
+  isEncrypted // Re-export for convenience
 };

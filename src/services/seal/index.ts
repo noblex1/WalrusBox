@@ -27,6 +27,23 @@ export { sealChunkingService, SealChunkingService } from './sealChunking';
 // Storage
 export { sealStorageService, SealStorageService } from './sealStorage';
 
+// File Type Detection
+export {
+  isEncrypted,
+  isEncryptedByBlobId,
+  detectEncryptionFromMetadata,
+  getStorageMode,
+  isValidEncryptedMetadata,
+  isValidUnencryptedMetadata,
+  getServiceType,
+  requiresEncryptionKey,
+  getEncryptionInfo,
+  canMigrateToEncrypted,
+  getFileTypeSummary,
+  validateMetadata,
+  fileTypeDetection
+} from './fileTypeDetection';
+
 // Key Management
 export {
   keyManagementService,
@@ -52,3 +69,36 @@ export {
   type ReEncryptionTask,
   type KeySecurityConfig
 } from './keySecurityManager';
+
+// Error Handling
+export {
+  SealErrorHandler,
+  sealErrorHandler,
+  ErrorCategory,
+  ERROR_MESSAGES,
+  ERROR_CATEGORIES,
+  type ErrorDetails
+} from './sealErrorHandler';
+
+export {
+  SealErrorRecovery,
+  RecoveryStateManager,
+  DEFAULT_RETRY_CONFIG,
+  type PartialUploadState
+} from './sealErrorRecovery';
+
+export {
+  SealErrorLogger,
+  sealErrorLogger,
+  LogLevel,
+  type ErrorLogEntry,
+  type ErrorStatistics
+} from './sealErrorLogger';
+
+export {
+  SealTimeoutHandler,
+  sealTimeoutHandler,
+  DEFAULT_TIMEOUTS,
+  type TimeoutConfig,
+  type TimeoutResult
+} from './sealTimeout';

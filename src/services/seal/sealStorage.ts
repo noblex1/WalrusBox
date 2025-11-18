@@ -11,15 +11,13 @@ import type {
   SealUploadResult,
   SealDownloadOptions,
   SealFileMetadata,
-  UploadProgress,
-  DownloadProgress,
   FileVerificationResult,
   ChunkMetadata,
-  SealError,
   SealErrorType,
   RetryConfig
 } from './sealTypes';
 import { SealError as SealErrorClass } from './sealTypes';
+import { sealErrorLogger } from './sealErrorLogger';
 
 /**
  * Default retry configuration
@@ -204,6 +202,9 @@ export class SealStorageService {
         transactionDigests: uploadResults.transactionDigests
       };
     } catch (error) {
+      // Log error
+      sealErrorLogger.logError(error, 'uploadFile', { fileName: file.name, fileSize: file.size });
+
       options.onProgress?.({
         stage: 'error',
         bytesUploaded: 0,
@@ -462,6 +463,9 @@ export class SealStorageService {
 
       return new Blob([new Uint8Array(reassembledData)]);
     } catch (error) {
+      // Log error
+      sealErrorLogger.logError(error, 'downloadFile', { fileName: metadata.fileName, fileId: metadata.fileId });
+
       options.onProgress?.({
         stage: 'error',
         bytesDownloaded: 0,

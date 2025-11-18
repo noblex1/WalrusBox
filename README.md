@@ -1,8 +1,8 @@
-# WalrusBox
+# WalBox
 
 <div align="center">
 
-![WalrusBox Logo](https://img.shields.io/badge/WalrusBox-Decentralized%20Storage-0ea5e9?style=for-the-badge)
+![WalBox Logo](https://img.shields.io/badge/WalBox-Decentralized%20Storage-0ea5e9?style=for-the-badge)
 
 **A Modern, Secure, and Decentralized File Storage Platform Built on Sui Blockchain**
 
@@ -10,9 +10,12 @@
 [![Sui Network](https://img.shields.io/badge/Sui-Testnet-4da2ff?style=flat-square)](https://sui.io)
 [![React](https://img.shields.io/badge/React-18.3.1-61dafb?style=flat-square&logo=react)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
+[![Seal Integration](https://img.shields.io/badge/Seal-30%25-orange?style=flat-square)](https://docs.walrus.site/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-[Features](#-features) • [Demo](#-demo) • [Installation](#-installation) • [Usage](#-usage) • [Architecture](#-architecture) • [Documentation](#-documentation)
+[Features](#-features) • [Seal Integration](#-seal-integration-advanced-encryption) • [Demo](#-demo) • [Installation](#-installation) • [Usage](#-usage) • [Architecture](#-architecture) • [Documentation](#-documentation)
+
+> **🚧 Active Development**: Currently integrating Mysten Labs' Seal for advanced encryption and chunking capabilities. Core encryption and chunking services are complete. Storage integration in progress.
 
 </div>
 
@@ -20,9 +23,9 @@
 
 ## 📖 Overview
 
-WalrusBox is a **Web3-enabled file management system** that combines the security of client-side encryption with the transparency and accessibility of blockchain technology. Built on the Sui blockchain, it enables users to securely store, manage, and share encrypted files in a fully decentralized environment.
+WalBox is a **Web3-enabled file management system** that combines the security of client-side encryption with the transparency and accessibility of blockchain technology. Built on the Sui blockchain, it enables users to securely store, manage, and share encrypted files in a fully decentralized environment.
 
-### Why WalrusBox?
+### Why WalBox?
 
 - 🔐 **End-to-End Encryption** - Files are encrypted locally before upload using AES-256-GCM
 - 🌐 **Decentralized Storage** - Leverages Walrus (Sui's storage solution) with IndexedDB fallback
@@ -32,10 +35,11 @@ WalrusBox is a **Web3-enabled file management system** that combines the securit
 - 🎨 **Modern UI/UX** - Beautiful, responsive interface with glassmorphism design
 - 🔄 **Auto-Fallback** - Seamless degradation to local storage when needed
 - 🚀 **Production Ready** - 15+ features, comprehensive testing, full documentation
+- 🔒 **Seal Integration (In Progress)** - Advanced encryption with chunking for large files
 
 ### Feature Comparison
 
-| Feature | WalrusBox | Traditional Cloud | Other Web3 |
+| Feature | WalBox | Traditional Cloud | Other Web3 |
 |---------|-----------|-------------------|------------|
 | End-to-End Encryption | ✅ AES-256-GCM | ❌ Server-side | ⚠️ Varies |
 | Decentralized Storage | ✅ Walrus | ❌ Centralized | ✅ IPFS/Arweave |
@@ -119,6 +123,15 @@ WalrusBox is a **Web3-enabled file management system** that combines the securit
   - IndexedDB local fallback
   - Automatic mode detection
   - Seamless switching
+
+- **🔒 Seal Integration (In Development)**
+  - Advanced encryption service with AES-256-GCM
+  - File chunking for large file support (up to 100MB+)
+  - Chunk-level integrity verification with SHA-256 hashes
+  - Wallet-based key derivation
+  - Configurable chunk sizes with optimization
+  - Retry logic with exponential backoff
+  - Progress tracking for chunked uploads
 
 - **👨‍💻 Developer Experience**
   - Full TypeScript support
@@ -221,9 +234,10 @@ View Favorites → Export Results
 | Technology | Purpose |
 |------------|---------|
 | Web Crypto API | AES-256-GCM encryption |
-| IndexedDB | Local storage fallback |
+| IndexedDB | Local storage fallback & key management |
 | Walrus | Decentralized storage |
 | SessionStorage | Encryption key management |
+| @mysten/seal | Advanced encryption & chunking (in development) |
 
 ---
 
@@ -241,7 +255,7 @@ View Favorites → Export Results
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd walrusbox
+cd walbox
 
 # Install dependencies
 npm install
@@ -276,6 +290,15 @@ VITE_REGISTRY_ID=0x97bcf633e416c1bed96725d3872d255a4481686a66d38a589c42220aae16f
 VITE_WALRUS_ENDPOINT=https://walrus-api.example.com
 # Production mode (when ready):
 # VITE_WALRUS_ENDPOINT=https://publisher.walrus-testnet.walrus.space
+VITE_WALRUS_PUBLISHER_URL=https://publisher.walrus-testnet.walrus.space
+VITE_WALRUS_AGGREGATOR_URL=https://aggregator.walrus-testnet.walrus.space
+
+# Seal Configuration (Optional - for advanced encryption)
+VITE_SEAL_ENABLED=false
+VITE_SEAL_CHUNK_SIZE=10485760
+VITE_SEAL_MAX_FILE_SIZE=104857600
+VITE_ENCRYPTION_ALGORITHM=AES-GCM
+VITE_ENCRYPTION_KEY_SIZE=256
 ```
 
 ---
@@ -344,11 +367,149 @@ Choose one of the supported wallets:
 
 ---
 
+## 🔒 Seal Integration (Advanced Encryption)
+
+### Overview
+
+WalBox is integrating **Mysten Labs' Seal** for advanced encryption capabilities, enabling secure storage of large files with chunking support. This integration provides enterprise-grade encryption with the following benefits:
+
+### Key Features
+
+- **🔐 Enhanced Encryption**
+  - AES-256-GCM encryption using Web Crypto API
+  - Wallet-based key derivation for seamless UX
+  - Secure key management with IndexedDB storage
+  - Key export/import for backup and recovery
+
+- **📦 File Chunking**
+  - Split large files into manageable chunks (default: 10MB)
+  - Support for files up to 100MB+ (configurable)
+  - Intelligent chunk size optimization
+  - Parallel chunk processing (planned)
+
+- **✅ Integrity Verification**
+  - SHA-256 hash generation for each chunk
+  - Content hash verification on download
+  - Chunk-level integrity checks
+  - Automatic corruption detection
+
+- **🔄 Reliability**
+  - Retry logic with exponential backoff
+  - RPC endpoint fallback on failure
+  - Partial upload recovery (planned)
+  - Detailed error handling and logging
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│              Seal Integration Layer              │
+│  ┌────────────────────────────────────────────┐ │
+│  │  sealConfig.ts - Configuration & Validation│ │
+│  │  sealClient.ts - Walrus Client Wrapper    │ │
+│  │  sealEncryption.ts - Encryption Service   │ │
+│  │  sealChunking.ts - File Chunking Service  │ │
+│  │  sealStorage.ts - Upload/Download (WIP)   │ │
+│  └────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+              │                  │
+              ▼                  ▼
+    ┌──────────────────┐  ┌──────────────┐
+    │  Sui Blockchain  │  │   Walrus     │
+    │  - Metadata      │  │  - Encrypted │
+    │  - Access Control│  │    Chunks    │
+    └──────────────────┘  └──────────────┘
+```
+
+### Implementation Status
+
+**Phase 1: Core Services (Completed)**
+- ✅ Configuration module with environment validation
+- ✅ Seal client initialization with RPC fallback
+- ✅ Encryption service with key management
+- ✅ Chunking service with metadata generation
+- ✅ Type definitions and error handling
+
+**Phase 2: Storage Integration (In Progress)**
+- 🔄 Upload orchestration with progress tracking
+- 🔄 Download and reassembly logic
+- 🔄 Retry mechanisms and error recovery
+- 🔄 Integration with existing Walrus service
+
+**Phase 3: UI Integration (Planned)**
+- 📋 Encryption toggle in upload interface
+- 📋 Encryption status indicators
+- 📋 Key management UI
+- 📋 Migration tools for existing files
+
+**Phase 4: Testing & Optimization (Planned)**
+- 📋 Performance optimization
+- 📋 Comprehensive testing suite
+- 📋 Security audit
+- 📋 Documentation
+
+### Configuration
+
+Enable Seal in your `.env` file:
+
+```env
+# Enable Seal integration
+VITE_SEAL_ENABLED=true
+
+# Chunk configuration
+VITE_SEAL_CHUNK_SIZE=10485760      # 10MB chunks
+VITE_SEAL_MAX_FILE_SIZE=104857600  # 100MB max file size
+
+# Encryption settings
+VITE_ENCRYPTION_ALGORITHM=AES-GCM
+VITE_ENCRYPTION_KEY_SIZE=256
+
+# Walrus endpoints
+VITE_WALRUS_PUBLISHER_URL=https://publisher.walrus-testnet.walrus.space
+VITE_WALRUS_AGGREGATOR_URL=https://aggregator.walrus-testnet.walrus.space
+```
+
+### Technical Details
+
+**Encryption Flow:**
+```
+File → Encrypt (AES-256-GCM) → Chunk (10MB) → 
+Generate Hashes → Upload to Walrus → Store Metadata
+```
+
+**Download Flow:**
+```
+Retrieve Metadata → Download Chunks → Verify Hashes → 
+Reassemble → Decrypt → Return File
+```
+
+**Key Management:**
+- Keys derived from wallet signatures (deterministic)
+- Secure storage in IndexedDB (encrypted)
+- Export/import for backup
+- Automatic key rotation (planned)
+
+### Security Considerations
+
+- All encryption happens client-side
+- Keys never transmitted to servers
+- Chunk-level integrity verification
+- Wallet-based key derivation for UX
+- Secure memory cleanup after operations
+
+### Documentation
+
+- [Seal Integration Spec](./.kiro/specs/seal-integration/requirements.md) - Requirements
+- [Design Document](./.kiro/specs/seal-integration/design.md) - Architecture
+- [Implementation Tasks](./.kiro/specs/seal-integration/tasks.md) - Progress tracking
+
+---
+
 ## 🔗 File Sharing Features
 
 ### Secure Link Sharing
 
-WalrusBox provides a comprehensive file sharing system with advanced security features:
+WalBox provides a comprehensive file sharing system with advanced security features:
 
 #### Key Features
 
@@ -466,7 +627,7 @@ Decryption → File Download → Success
 
 ### Smart Contract
 
-**Location:** `contracts/sources/walrusbox.move`
+**Location:** `contracts/sources/walbox.move`
 
 **Key Components:**
 
@@ -495,10 +656,10 @@ Decryption → File Download → Success
 ## 📂 Project Structure
 
 ```
-walrusbox/
+walbox/
 ├── contracts/                 # Sui Move smart contracts
 │   ├── sources/
-│   │   └── walrusbox.move    # Main contract
+│   │   └── walbox.move    # Main contract
 │   ├── Move.toml             # Contract configuration
 │   └── README.md             # Contract documentation
 │
@@ -531,7 +692,14 @@ walrusbox/
 │   │   ├── preview.ts      # File preview
 │   │   ├── favorites.ts    # Favorites & recent
 │   │   ├── export.ts       # Export functionality
-│   │   └── slushHelper.ts  # Wallet detection
+│   │   ├── slushHelper.ts  # Wallet detection
+│   │   └── seal/           # Seal integration (in development)
+│   │       ├── sealTypes.ts      # Type definitions
+│   │       ├── sealConfig.ts     # Configuration & validation
+│   │       ├── sealClient.ts     # Walrus client wrapper
+│   │       ├── sealEncryption.ts # Advanced encryption
+│   │       ├── sealChunking.ts   # File chunking service
+│   │       └── sealStorage.ts    # Storage orchestration (planned)
 │   │
 │   ├── hooks/              # Custom React hooks
 │   │   ├── useWallet.ts   # Wallet integration
@@ -543,6 +711,13 @@ walrusbox/
 │   ├── lib/                # Utility functions
 │   ├── App.tsx             # Root component
 │   └── main.tsx            # Entry point
+│
+├── .kiro/                  # Kiro IDE specs
+│   └── specs/
+│       └── seal-integration/  # Seal integration spec
+│           ├── requirements.md
+│           ├── design.md
+│           └── tasks.md
 │
 ├── public/                 # Static assets
 ├── .env                    # Environment variables
@@ -836,6 +1011,38 @@ See [Troubleshooting Guide](./ENCRYPTION_FIX_COMPLETE.md#troubleshooting) for so
 - ✅ **Keyboard shortcuts**
 - ✅ **Export functionality**
 
+### Phase 1.5 - Seal Integration (In Progress)
+
+**Completed:**
+- ✅ Seal package installation and configuration
+- ✅ Type definitions and interfaces
+- ✅ Configuration module with validation
+- ✅ Seal client service with RPC fallback
+- ✅ Advanced encryption service (AES-256-GCM)
+- ✅ Key management (generation, export, import)
+- ✅ Wallet-based key derivation
+- ✅ File chunking service
+- ✅ Chunk metadata generation
+- ✅ Chunk integrity verification (SHA-256)
+- ✅ Chunk size optimization
+
+**In Development:**
+- 🔄 Seal storage service (upload/download orchestration)
+- 🔄 Retry logic with exponential backoff
+- 🔄 Progress tracking for chunked uploads
+- 🔄 Frontend encryption toggle UI
+- 🔄 Encryption status indicators
+- 🔄 Key management UI
+- 🔄 Data integrity verification UI
+- 🔄 Backward compatibility layer
+- 🔄 Migration tools for existing files
+
+**Next Steps:**
+- 📋 Performance optimization
+- 📋 Comprehensive testing
+- 📋 User & developer documentation
+- 📋 Security audit
+
 ### Phase 2 (Planned)
 
 - 🔄 Password-protected share links
@@ -862,11 +1069,12 @@ See [Troubleshooting Guide](./ENCRYPTION_FIX_COMPLETE.md#troubleshooting) for so
 - **Smart Contract**: Deployed on Sui Testnet
 - **Package ID**: `0x386cf5f10e6dc8639fcc494123439e333e738280a8f249b638cb7b84328a8885`
 - **Network**: Sui Testnet
-- **Status**: Production Ready
+- **Status**: Production Ready (Phase 1.5 in development)
 - **Features**: 15+ Phase 1 features implemented
 - **Components**: 25+ React components
-- **Services**: 10+ business logic services
+- **Services**: 10+ business logic services (+ 5 Seal services)
 - **Documentation**: 20+ comprehensive guides
+- **Seal Integration**: 30% complete (4/13 major tasks)
 
 ---
 
@@ -874,6 +1082,6 @@ See [Troubleshooting Guide](./ENCRYPTION_FIX_COMPLETE.md#troubleshooting) for so
 
 **Built with ❤️ for the Web3 community**
 
-[⬆ Back to Top](#walrusbox)
+[⬆ Back to Top](#walbox)
 
 </div>

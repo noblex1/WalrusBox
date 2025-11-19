@@ -123,11 +123,17 @@ const Dashboard = () => {
     try {
       // Get files from blockchain
       const blockchainFiles = await filesService.getAllFiles(address);
-      console.log('Loaded blockchain files:', blockchainFiles);
+      console.log('📋 Loaded blockchain files:', blockchainFiles.length, blockchainFiles);
       
       // Get local files metadata
       const localFiles = localFilesService.getAllFiles();
-      console.log('Loaded local files:', localFiles);
+      console.log('💾 Loaded local files:', localFiles.length, localFiles);
+      
+      // Debug: Check if any blockchain files have undefined IDs
+      const filesWithoutIds = blockchainFiles.filter(f => !f.id);
+      if (filesWithoutIds.length > 0) {
+        console.warn('⚠️ Found blockchain files without IDs:', filesWithoutIds);
+      }
       
       // Merge blockchain files with local metadata
       const mergedFiles = blockchainFiles.map(blockchainFile => {

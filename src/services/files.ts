@@ -32,10 +32,21 @@ export interface FileMetadata {
  * Convert Sui object data to FileMetadata
  */
 function parseFileObject(objectData: any): FileMetadata {
-  const fields = objectData.content?.fields || {};
+  console.log('🔍 Parsing file object:', objectData);
   
-  return {
-    id: objectData.id || objectData.objectId,
+  // Handle different response structures
+  const data = objectData.data || objectData;
+  const fields = data.content?.fields || {};
+  
+  // Extract ID from various possible locations
+  const id = data.objectId || data.id || objectData.objectId || objectData.id;
+  
+  if (!id) {
+    console.error('❌ No ID found in object data:', objectData);
+  }
+  
+  const parsed = {
+    id: id || '',
     file_id: fields.file_id || '',
     walrus_object_hash: fields.walrus_object_hash 
       ? new Uint8Array(Object.values(fields.walrus_object_hash)) 
@@ -48,8 +59,11 @@ function parseFileObject(objectData: any): FileMetadata {
           : Object.values(fields.allowed_addresses))
       : [],
     uploadedAt: new Date(Number(fields.created_at || 0)),
-    encryptionStatus: 'encrypted', // Assumed encrypted if stored on-chain
+    encryptionStatus: 'encrypted' as const, // Assumed encrypted if stored on-chain
   };
+  
+  console.log('✅ Parsed file:', parsed);
+  return parsed;
 }
 
 export const filesService = {
@@ -64,6 +78,9 @@ export const filesService = {
         return [];
       }
 
+      console.log('🔍 Querying files for owner:', ownerAddress);
+      console.log('📦 Package ID:', PACKAGE_ID);
+      
       // Query owned objects of type FileObject
       const objects = await suiClient.getOwnedObjects({
         owner: ownerAddress,
@@ -76,13 +93,15 @@ export const filesService = {
         },
       });
 
+      console.log('📋 Received objects from blockchain:', objects.data.length, objects.data);
+
       // Parse and return file metadata
       return objects.data
         .map(obj => {
           try {
             return parseFileObject(obj);
           } catch (error) {
-            console.error('Error parsing file object:', error);
+            console.error('❌ Error parsing file object:', error, obj);
             return null;
           }
         })

@@ -99,6 +99,7 @@ export const FileUploadArea = () => {
         setUploadStage('Creating on-chain record...');
 
         // Create on-chain Sui FileObject (triggers wallet popup)
+        let createdObjectId: string | null = null;
         const signerFunction = (tx: any, options?: any): Promise<string> => {
           return new Promise((resolve, reject) => {
             signAndExecuteTransactionBlock(
@@ -108,10 +109,23 @@ export const FileUploadArea = () => {
                 options: options || {
                   showEffects: true,
                   showEvents: true,
+                  showObjectChanges: true,
                 },
               } as any,
               {
-                onSuccess: (result: any) => resolve(result.digest || result.transactionDigest || ''),
+                onSuccess: (result: any) => {
+                  console.log('Transaction result:', result);
+                  // Extract created object ID from transaction result
+                  if (result.effects?.created && result.effects.created.length > 0) {
+                    createdObjectId = result.effects.created[0].reference.objectId;
+                  } else if (result.objectChanges) {
+                    const created = result.objectChanges.find((change: any) => change.type === 'created');
+                    if (created) {
+                      createdObjectId = created.objectId;
+                    }
+                  }
+                  resolve(result.digest || result.transactionDigest || '');
+                },
                 onError: reject,
               }
             );
@@ -123,17 +137,22 @@ export const FileUploadArea = () => {
         await filesService.createFile(signerFunction, result.metadata.fileId, blobIdBytes);
         setUploadProgress(90);
 
-        // Store encryption key securely
+        // Use the created object ID or fall back to the file ID
+        const objectId = createdObjectId || result.metadata.fileId;
+        console.log('File created with object ID:', objectId);
+
+        // Store encryption key securely using the object ID
         if (result.encryptionKey) {
-          localStorage.setItem(`seal_key_${result.metadata.fileId}`, result.encryptionKey);
+          localStorage.setItem(`seal_key_${objectId}`, result.encryptionKey);
         }
 
-        // Store Seal metadata for download/verification
-        localStorage.setItem(`seal_metadata_${result.metadata.fileId}`, JSON.stringify(result.metadata));
+        // Store Seal metadata for download/verification using the object ID
+        const updatedMetadata = { ...result.metadata, fileId: objectId };
+        localStorage.setItem(`seal_metadata_${objectId}`, JSON.stringify(updatedMetadata));
 
-        // Store local file metadata
+        // Store local file metadata using the object ID
         localFilesService.saveFile({
-          id: result.metadata.fileId,
+          id: objectId,
           name: selectedFile.name,
           size: selectedFile.size,
           type: selectedFile.type,
@@ -175,6 +194,7 @@ export const FileUploadArea = () => {
 
         const fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         
+        let createdObjectIdLegacy: string | null = null;
         const signerFunction = (tx: any, options?: any): Promise<string> => {
           return new Promise((resolve, reject) => {
             signAndExecuteTransactionBlock(
@@ -184,10 +204,23 @@ export const FileUploadArea = () => {
                 options: options || {
                   showEffects: true,
                   showEvents: true,
+                  showObjectChanges: true,
                 },
               } as any,
               {
-                onSuccess: (result: any) => resolve(result.digest || result.transactionDigest || ''),
+                onSuccess: (result: any) => {
+                  console.log('Transaction result:', result);
+                  // Extract created object ID from transaction result
+                  if (result.effects?.created && result.effects.created.length > 0) {
+                    createdObjectIdLegacy = result.effects.created[0].reference.objectId;
+                  } else if (result.objectChanges) {
+                    const created = result.objectChanges.find((change: any) => change.type === 'created');
+                    if (created) {
+                      createdObjectIdLegacy = created.objectId;
+                    }
+                  }
+                  resolve(result.digest || result.transactionDigest || '');
+                },
                 onError: reject,
               }
             );
@@ -197,6 +230,10 @@ export const FileUploadArea = () => {
         await filesService.createFile(signerFunction, fileId, walrusHash);
         setUploadProgress(90);
 
+        // Use the created object ID or fall back to the file ID
+        const objectId = createdObjectIdLegacy || fileId;
+        console.log('File created with object ID:', objectId);
+
         const keyId = encryptionService.generateKeyId();
         encryptionService.storeKeyMetadata(keyId, {
           fileName: selectedFile.name,
@@ -204,10 +241,10 @@ export const FileUploadArea = () => {
           fileSize: selectedFile.size,
         });
         
-        localStorage.setItem(`key_${fileId}`, keyId);
+        localStorage.setItem(`key_${objectId}`, keyId);
 
         localFilesService.saveFile({
-          id: fileId,
+          id: objectId,
           name: selectedFile.name,
           size: selectedFile.size,
           type: selectedFile.type,

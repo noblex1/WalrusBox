@@ -63,7 +63,13 @@ const FileView = () => {
           const sealMetadataStr = localStorage.getItem(`seal_metadata_${id}`);
           
           if (!sealMetadataStr) {
-            throw new Error('Seal metadata not found');
+            // Metadata missing - file was uploaded before metadata saving was implemented
+            toast({
+              title: "Cannot Download File",
+              description: "This file was uploaded without metadata. Please re-upload the file.",
+              variant: "destructive",
+            });
+            throw new Error('Seal metadata not found. File needs to be re-uploaded.');
           }
 
           const sealMetadata: SealFileMetadata = JSON.parse(sealMetadataStr);

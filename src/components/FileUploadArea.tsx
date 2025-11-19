@@ -98,41 +98,38 @@ export const FileUploadArea = () => {
         setUploadProgress(75);
         setUploadStage('Creating on-chain record...');
 
-        // Try to create on-chain Sui FileObject (triggers wallet popup)
-        try {
-          const signerFunction = (tx: any, options?: any): Promise<string> => {
-            return new Promise((resolve, reject) => {
-              signAndExecuteTransactionBlock(
-                {
-                  transactionBlock: tx,
-                  account: account,
-                  options: options || {
-                    showEffects: true,
-                    showEvents: true,
-                  },
-                } as any,
-                {
-                  onSuccess: (result: any) => resolve(result.digest || result.transactionDigest || ''),
-                  onError: reject,
-                }
-              );
-            });
-          };
+        // Create on-chain Sui FileObject (triggers wallet popup)
+        const signerFunction = (tx: any, options?: any): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            signAndExecuteTransactionBlock(
+              {
+                transactionBlock: tx,
+                account: account,
+                options: options || {
+                  showEffects: true,
+                  showEvents: true,
+                },
+              } as any,
+              {
+                onSuccess: (result: any) => resolve(result.digest || result.transactionDigest || ''),
+                onError: reject,
+              }
+            );
+          });
+        };
 
-          // Convert blobId string to Uint8Array for on-chain storage
-          const blobIdBytes = new TextEncoder().encode(result.blobIds[0]);
-          await filesService.createFile(signerFunction, result.metadata.fileId, blobIdBytes);
-          setUploadProgress(90);
-        } catch (contractError) {
-          console.warn('⚠️ On-chain storage not available, using local storage only:', contractError);
-          // Continue without on-chain storage - file is already on Walrus
-          setUploadProgress(90);
-        }
+        // Convert blobId string to Uint8Array for on-chain storage
+        const blobIdBytes = new TextEncoder().encode(result.blobIds[0]);
+        await filesService.createFile(signerFunction, result.metadata.fileId, blobIdBytes);
+        setUploadProgress(90);
 
         // Store encryption key securely
         if (result.encryptionKey) {
           localStorage.setItem(`seal_key_${result.metadata.fileId}`, result.encryptionKey);
         }
+
+        // Store Seal metadata for download/verification
+        localStorage.setItem(`seal_metadata_${result.metadata.fileId}`, JSON.stringify(result.metadata));
 
         // Store local file metadata
         localFilesService.saveFile({

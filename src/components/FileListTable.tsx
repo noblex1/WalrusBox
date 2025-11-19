@@ -93,15 +93,26 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
 
   const handleDownload = async (file: FileMetadata) => {
     try {
-      const localFile = localFilesService.getFile(file.id);
-      if (!localFile) {
+      if (!file.id) {
         toast({
-          title: "File Not Found",
-          description: "File metadata not found",
+          title: "Cannot Download",
+          description: "File ID is missing. Please refresh and try again.",
           variant: "destructive",
         });
         return;
       }
+
+      const localFile = localFilesService.getFile(file.id);
+      if (!localFile) {
+        toast({
+          title: "File Not Found",
+          description: "File metadata not found. The file may not have been uploaded properly.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Downloading file:', file.id, 'Name:', localFile.name);
 
       // Check if file is encrypted with Seal
       const sealKey = localStorage.getItem(`seal_key_${file.id}`);
@@ -109,30 +120,59 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
       let blob: Blob;
       
       if (sealKey) {
-        console.log('Downloading encrypted file:', file.id);
+        console.log('Downloading encrypted file with Seal');
         const sealMetadataStr = localStorage.getItem(`seal_metadata_${file.id}`);
         
         if (!sealMetadataStr) {
           toast({
             title: "Cannot Download",
-            description: "File metadata not found. Please re-upload the file.",
+            description: "Encryption metadata not found. Please re-upload the file.",
             variant: "destructive",
           });
           return;
         }
 
         const sealMetadata = JSON.parse(sealMetadataStr);
+        console.log('Seal metadata:', sealMetadata);
+        
         blob = await sealStorageService.downloadFile(sealMetadata, {
           decrypt: true,
           encryptionKey: sealKey,
           verifyIntegrity: true,
         });
+        
+        console.log('File decrypted, size:', blob.size);
       } else {
-        console.log('Downloading unencrypted file:', file.id);
+        console.log('Downloading unencrypted file');
         // Try IndexedDB first
-        blob = await storageService.getBlob(file.id) || await storageService.downloadFromWalrus(
-          new TextEncoder().encode(file.id)
-        );
+        let blobFromStorage = await storageService.getBlob(file.id);
+        
+        if (!blobFromStorage) {
+          console.log('Not in IndexedDB, trying Walrus');
+          // Try to download from Walrus using the walrus hash
+          if (file.walrus_object_hash && file.walrus_object_hash.length > 0) {
+            blobFromStorage = await storageService.downloadFromWalrus(file.walrus_object_hash);
+          } else {
+            // Try using blob metadata
+            const blobMetadata = storageService.getBlobMetadata(file.id);
+            if (blobMetadata && blobMetadata.blobId) {
+              const walrusHash = new TextEncoder().encode(blobMetadata.blobId);
+              blobFromStorage = await storageService.downloadFromWalrus(walrusHash);
+            }
+          }
+        }
+        
+        if (!blobFromStorage) {
+          toast({
+            title: "File Not Found",
+            description: "Could not find file data. It may have been deleted or expired.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        blob = blobFromStorage;
+        console.log('File retrieved, size:', blob.size);
       }
 
       // Create download link

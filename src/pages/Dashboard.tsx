@@ -11,6 +11,7 @@ import { FolderBreadcrumbs, BreadcrumbItem } from '@/components/FolderBreadcrumb
 import { NewFolderModal } from '@/components/NewFolderModal';
 import { DndProvider } from '@/components/DndProvider';
 import { filesService, FileMetadata } from '@/services/files';
+import { localFilesService } from '@/services/localFiles';
 import { foldersService } from '@/services/folders';
 import { favoritesService } from '@/services/favorites';
 import { exportService } from '@/services/export';
@@ -120,11 +121,59 @@ const Dashboard = () => {
   const loadFiles = async (address: string) => {
     setIsLoadingFiles(true);
     try {
-      const fileList = await filesService.getAllFiles(address);
-      setFiles(fileList);
+      // Get files from blockchain
+      const blockchainFiles = await filesService.getAllFiles(address);
+      console.log('Loaded blockchain files:', blockchainFiles);
+      
+      // Get local files metadata
+      const localFiles = localFilesService.getAllFiles();
+      console.log('Loaded local files:', localFiles);
+      
+      // Merge blockchain files with local metadata
+      const mergedFiles = blockchainFiles.map(blockchainFile => {
+        const localFile = localFiles.find(lf => lf.id === blockchainFile.id);
+        if (localFile) {
+          // Merge with local metadata for better display
+          return {
+            ...blockchainFile,
+            file_id: localFile.name, // Use actual filename instead of file_id
+          };
+        }
+        return blockchainFile;
+      });
+      
+      // Also include local-only files (not yet on blockchain or failed to sync)
+      const localOnlyFiles = localFiles
+        .filter(lf => !blockchainFiles.find(bf => bf.id === lf.id))
+        .map(lf => ({
+          id: lf.id,
+          file_id: lf.name,
+          walrus_object_hash: new Uint8Array(),
+          owner: address,
+          visibility: lf.visibility,
+          allowedWallets: lf.allowedWallets,
+          uploadedAt: lf.uploadedAt,
+          encryptionStatus: 'pending' as const,
+        }));
+      
+      const allFiles = [...mergedFiles, ...localOnlyFiles];
+      console.log('Merged files:', allFiles);
+      setFiles(allFiles);
     } catch (error) {
       console.error('Error loading files:', error);
-      setFiles([]);
+      // Fallback to local files if blockchain query fails
+      const localFiles = localFilesService.getAllFiles();
+      const fallbackFiles = localFiles.map(lf => ({
+        id: lf.id,
+        file_id: lf.name,
+        walrus_object_hash: new Uint8Array(),
+        owner: address,
+        visibility: lf.visibility,
+        allowedWallets: lf.allowedWallets,
+        uploadedAt: lf.uploadedAt,
+        encryptionStatus: 'pending' as const,
+      }));
+      setFiles(fallbackFiles);
     } finally {
       setIsLoadingFiles(false);
     }

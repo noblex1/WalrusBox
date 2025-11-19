@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { WalletConnectButton } from '@/components/WalletConnectButton';
@@ -24,6 +24,7 @@ import { GlowButton } from '@/components/animated/GlowButton';
 
 const Dashboard3D = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const account = useCurrentAccount();
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
@@ -51,6 +52,15 @@ const Dashboard3D = () => {
       setFiles([]);
     }
   }, [account?.address]);
+
+  // Refresh files when navigating from upload with refresh state
+  useEffect(() => {
+    if (location.state?.refresh && account?.address) {
+      loadFiles(account.address);
+      // Clear the state to prevent repeated refreshes
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, account?.address]);
 
   const loadFiles = async (address: string) => {
     setIsLoadingFiles(true);

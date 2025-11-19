@@ -95,6 +95,34 @@ export const FileUploadArea = () => {
           }
         });
 
+        setUploadProgress(75);
+        setUploadStage('Creating on-chain record...');
+
+        // Create on-chain Sui FileObject (triggers wallet popup)
+        const signerFunction = (tx: any, options?: any): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            signAndExecuteTransactionBlock(
+              {
+                transactionBlock: tx,
+                account: account,
+                options: options || {
+                  showEffects: true,
+                  showEvents: true,
+                },
+              } as any,
+              {
+                onSuccess: (result: any) => resolve(result.digest || result.transactionDigest || ''),
+                onError: reject,
+              }
+            );
+          });
+        };
+
+        // Convert blobId string to Uint8Array for on-chain storage
+        const blobIdBytes = new TextEncoder().encode(result.blobIds[0]);
+        await filesService.createFile(signerFunction, result.metadata.fileId, blobIdBytes);
+        setUploadProgress(90);
+
         // Store encryption key securely
         if (result.encryptionKey) {
           localStorage.setItem(`seal_key_${result.metadata.fileId}`, result.encryptionKey);
@@ -111,10 +139,17 @@ export const FileUploadArea = () => {
           allowedWallets: [],
         });
 
+        setUploadProgress(100);
+
         toast({
           title: "File Uploaded Successfully",
           description: `${selectedFile.name} has been encrypted and stored securely.`,
         });
+
+        // Navigate to dashboard with state to trigger refresh
+        setTimeout(() => {
+          navigate('/dashboard', { state: { refresh: true } });
+        }, 500);
       } else {
         // Use legacy unencrypted upload
         setUploadStage('uploading');

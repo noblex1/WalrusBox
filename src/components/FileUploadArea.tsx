@@ -17,6 +17,7 @@ import { storageService } from '@/services/storage';
 import { filesService } from '@/services/files';
 import { localFilesService } from '@/services/localFiles';
 import { sealStorageService } from '@/services/seal/sealStorage';
+import { sealMetadataService } from '@/services/seal/sealMetadata';
 import type { UploadProgress as SealUploadProgress } from '@/services/seal/sealTypes';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -146,11 +147,19 @@ export const FileUploadArea = () => {
           localStorage.setItem(`seal_key_${objectId}`, result.encryptionKey);
         }
 
-        // Store Seal metadata for download/verification using the object ID
+        // Store Seal metadata using the sealMetadata service
         const updatedMetadata = { ...result.metadata, fileId: objectId };
-        localStorage.setItem(`seal_metadata_${objectId}`, JSON.stringify(updatedMetadata));
+        await sealMetadataService.saveSealMetadata(objectId, updatedMetadata);
 
-        // Store local file metadata using the object ID
+        // Validate metadata after save
+        const savedMetadata = await sealMetadataService.getSealMetadata(objectId);
+        const isValid = sealMetadataService.validateSealMetadata(savedMetadata);
+        
+        if (!isValid) {
+          console.warn('⚠️ Saved metadata validation failed for file:', objectId);
+        }
+
+        // Store local file metadata with Seal metadata flags
         localFilesService.saveFile({
           id: objectId,
           name: selectedFile.name,
@@ -159,7 +168,19 @@ export const FileUploadArea = () => {
           uploadedAt: new Date(),
           visibility: 'private',
           allowedWallets: [],
+          isEncrypted: true,
+          hasSealMetadata: isValid,
+          sealMetadataKey: `seal_metadata_${objectId}`,
+          verificationStatus: 'pending',
         });
+
+        // Cache the original file in IndexedDB for immediate download
+        try {
+          await storageService.saveToIndexedDB(objectId, selectedFile);
+          console.log('✅ File cached in IndexedDB for immediate download');
+        } catch (error) {
+          console.warn('⚠️ Failed to cache file in IndexedDB:', error);
+        }
 
         setUploadProgress(100);
 
@@ -251,7 +272,17 @@ export const FileUploadArea = () => {
           uploadedAt: new Date(),
           visibility: 'private',
           allowedWallets: [],
+          isEncrypted: false,
+          hasSealMetadata: false,
         });
+
+        // Cache the original file in IndexedDB for immediate download
+        try {
+          await storageService.saveToIndexedDB(objectId, selectedFile);
+          console.log('✅ File cached in IndexedDB for immediate download');
+        } catch (error) {
+          console.warn('⚠️ Failed to cache file in IndexedDB:', error);
+        }
 
         setUploadProgress(100);
 

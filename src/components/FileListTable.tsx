@@ -39,6 +39,8 @@ import {
 import { ShareModal } from './ShareModal';
 import { FilePreviewModal } from './FilePreviewModal';
 import { VirtualFileList } from './VirtualFileList';
+import { BlobVerificationStatus } from './BlobVerificationStatus';
+import { BatchVerificationProgress } from './BatchVerificationProgress';
 import { toast } from '@/hooks/use-toast';
 
 interface FileListTableProps {
@@ -63,6 +65,12 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
   const [verifyingFiles, setVerifyingFiles] = useState<Set<string>>(new Set());
   const [verificationResults, setVerificationResults] = useState<Map<string, FileVerificationResult>>(new Map());
   const [batchVerifying, setBatchVerifying] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{
+    total: number;
+    verified: number;
+    failed: number;
+    current: number;
+  }>({ total: 0, verified: 0, failed: 0, current: 0 });
 
   const [previewFile, setPreviewFile] = useState<FileMetadata | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -116,6 +124,9 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
     setIsPreviewOpen(true);
   };
 
+  const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
+  const [downloadProgress, setDownloadProgress] = useState<Map<string, { percentage: number; message: string }>>(new Map());
+
   const handleDownload = async (file: FileMetadata) => {
     try {
       console.log('🔽 handleDownload called with file:', file);
@@ -134,13 +145,6 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
       const localFile = localFilesService.getFile(file.id);
       console.log('📂 Local file found:', localFile);
       
-      if (!localFile) {
-        console.warn('⚠️ Local file metadata not found, using file_id as name');
-        // Use file_id as fallback name
-        const fileName = file.file_id || 'download';
-        console.log('📝 Using fallback name:', fileName);
-      }
-
       const fileName = localFile?.name || file.file_id || 'download';
       console.log('📝 Downloading file:', file.id, 'Name:', fileName);
 
@@ -151,27 +155,57 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
       
       if (sealKey) {
         console.log('Downloading encrypted file with Seal');
-        const sealMetadataStr = localStorage.getItem(`seal_metadata_${file.id}`);
         
-        if (!sealMetadataStr) {
-          toast({
-            title: "Cannot Download",
-            description: "Encryption metadata not found. Please re-upload the file.",
-            variant: "destructive",
+        // Mark file as downloading
+        setDownloadingFiles(prev => new Set(prev).add(file.id));
+        
+        try {
+          // Use the new downloadEncryptedFile service
+          blob = await filesService.downloadEncryptedFile(file.id, {
+            verifyBeforeDownload: true,
+            encryptionKey: sealKey,
+            timeout: 60000, // 60 second timeout
+            verifyIntegrity: true,
+            onProgress: (progress) => {
+              console.log(`Download progress: ${progress.percentage}% - ${progress.message}`);
+              
+              // Update progress state
+              setDownloadProgress(prev => new Map(prev).set(file.id, {
+                percentage: progress.percentage,
+                message: progress.message
+              }));
+              
+              // Show toast for key stages
+              if (progress.stage === 'verifying') {
+                toast({
+                  title: "Verifying File",
+                  description: "Checking file availability...",
+                });
+              } else if (progress.stage === 'downloading' && progress.currentChunk === 1) {
+                toast({
+                  title: "Downloading",
+                  description: progress.totalChunks && progress.totalChunks > 1
+                    ? `Downloading ${progress.totalChunks} chunks...`
+                    : "Downloading file...",
+                });
+              }
+            }
           });
-          return;
+          
+          console.log('File downloaded and decrypted, size:', blob.size);
+        } finally {
+          // Clear downloading state
+          setDownloadingFiles(prev => {
+            const next = new Set(prev);
+            next.delete(file.id);
+            return next;
+          });
+          setDownloadProgress(prev => {
+            const next = new Map(prev);
+            next.delete(file.id);
+            return next;
+          });
         }
-
-        const sealMetadata = JSON.parse(sealMetadataStr);
-        console.log('Seal metadata:', sealMetadata);
-        
-        blob = await sealStorageService.downloadFile(sealMetadata, {
-          decrypt: true,
-          encryptionKey: sealKey,
-          verifyIntegrity: true,
-        });
-        
-        console.log('File decrypted, size:', blob.size);
       } else {
         console.log('Downloading unencrypted file');
         // Try IndexedDB first
@@ -227,16 +261,66 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
       console.log('✅ Download initiated successfully');
 
       toast({
-        title: "Download Started",
-        description: `Downloading ${fileName}`,
+        title: "Download Complete",
+        description: `Successfully downloaded ${fileName}`,
       });
     } catch (error) {
       console.error('Download error:', error);
+      
+      // Import error handler and ToastAction dynamically
+      const { sealErrorHandler } = await import('@/services/seal/sealErrorHandler');
+      const { ToastAction } = await import('@/components/ui/toast');
+      
+      // Get user-friendly error message and recovery options
+      const errorDetails = sealErrorHandler.getErrorDetails(error);
+      const recoveryOptions = sealErrorHandler.generateRecoveryOptions(errorDetails.type);
+      
+      // Show error toast with recovery options
+      const primaryOption = recoveryOptions.find(opt => opt.primary);
+      
       toast({
         title: "Download Failed",
-        description: error instanceof Error ? error.message : "Could not download file",
+        description: errorDetails.userMessage,
         variant: "destructive",
+        action: primaryOption ? (
+          <ToastAction 
+            altText={primaryOption.label}
+            onClick={() => handleRecoveryAction(primaryOption.action, file)}
+          >
+            {primaryOption.label}
+          </ToastAction>
+        ) : undefined
       });
+      
+      // Log detailed error for debugging
+      console.error('Detailed error:', errorDetails);
+    }
+  };
+
+  const handleRecoveryAction = async (action: string, file: FileMetadata) => {
+    switch (action) {
+      case 'retry':
+        console.log('Retrying download for file:', file.id);
+        await handleDownload(file);
+        break;
+        
+      case 'delete':
+        console.log('Deleting file after failed download:', file.id);
+        await handleDelete(file);
+        break;
+        
+      case 'report':
+        console.log('Reporting issue for file:', file.id);
+        toast({
+          title: "Report Issue",
+          description: "Please contact support with the file ID: " + file.id,
+        });
+        break;
+        
+      case 'dismiss':
+      default:
+        // Do nothing
+        break;
     }
   };
 
@@ -353,14 +437,35 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
     }
 
     setBatchVerifying(true);
+    setBatchProgress({
+      total: encryptedFiles.length,
+      verified: 0,
+      failed: 0,
+      current: 0,
+    });
+
     let successCount = 0;
     let failCount = 0;
 
-    for (const file of encryptedFiles) {
+    for (let i = 0; i < encryptedFiles.length; i++) {
+      const file = encryptedFiles[i];
       const sealMetadataKey = `seal_metadata_${file.id}`;
       const sealMetadataStr = localStorage.getItem(sealMetadataKey);
       
-      if (!sealMetadataStr) continue;
+      // Update current progress
+      setBatchProgress(prev => ({
+        ...prev,
+        current: i + 1,
+      }));
+      
+      if (!sealMetadataStr) {
+        failCount++;
+        setBatchProgress(prev => ({
+          ...prev,
+          failed: prev.failed + 1,
+        }));
+        continue;
+      }
 
       try {
         const sealMetadata: SealFileMetadata = JSON.parse(sealMetadataStr);
@@ -370,11 +475,23 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
         
         if (result.success) {
           successCount++;
+          setBatchProgress(prev => ({
+            ...prev,
+            verified: prev.verified + 1,
+          }));
         } else {
           failCount++;
+          setBatchProgress(prev => ({
+            ...prev,
+            failed: prev.failed + 1,
+          }));
         }
       } catch (error) {
         failCount++;
+        setBatchProgress(prev => ({
+          ...prev,
+          failed: prev.failed + 1,
+        }));
       }
     }
 
@@ -432,6 +549,19 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
 
   return (
     <>
+      {/* Batch Verification Progress */}
+      {batchVerifying && (
+        <div className="mb-4 animate-fade-in">
+          <BatchVerificationProgress
+            total={batchProgress.total}
+            verified={batchProgress.verified}
+            failed={batchProgress.failed}
+            current={batchProgress.current}
+            isComplete={false}
+          />
+        </div>
+      )}
+
       {/* Encryption Filter and Batch Actions */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -502,29 +632,53 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
               const isVerifying = verifyingFiles.has(file.id);
               const verificationResult = verificationResults.get(file.id);
               const corrupted = isFileCorrupted(file.id);
+              const isDownloading = downloadingFiles.has(file.id);
+              const progress = downloadProgress.get(file.id);
               
               return (
                 <TableRow 
                   key={file.id} 
                   className={`hover:bg-primary/5 transition-colors duration-200 border-white/5 animate-fade-in ${
                     corrupted ? 'bg-destructive/5' : ''
-                  }`}
+                  } ${isDownloading ? 'bg-primary/5' : ''}`}
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {file.file_id || 'Unknown'}
-                      {encrypted && (
-                        <Badge variant="outline" className="gap-1 text-xs border-primary/30 bg-primary/10">
-                          <Shield className="h-3 w-3 text-primary" />
-                          Encrypted
-                        </Badge>
-                      )}
-                      {corrupted && (
-                        <Badge variant="destructive" className="gap-1 text-xs">
-                          <XCircle className="h-3 w-3" />
-                          Corrupted
-                        </Badge>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        {file.file_id || 'Unknown'}
+                        {encrypted && (
+                          <Badge variant="outline" className="gap-1 text-xs border-primary/30 bg-primary/10">
+                            <Shield className="h-3 w-3 text-primary" />
+                            Encrypted
+                          </Badge>
+                        )}
+                        {corrupted && (
+                          <Badge variant="destructive" className="gap-1 text-xs">
+                            <XCircle className="h-3 w-3" />
+                            Corrupted
+                          </Badge>
+                        )}
+                        {isDownloading && (
+                          <Badge variant="outline" className="gap-1 text-xs border-primary/30 bg-primary/10">
+                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                            Downloading
+                          </Badge>
+                        )}
+                      </div>
+                      {isDownloading && progress && (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary transition-all duration-300"
+                                style={{ width: `${progress.percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground">{progress.percentage}%</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{progress.message}</span>
+                        </div>
                       )}
                     </div>
                   </TableCell>
@@ -561,47 +715,13 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {encrypted ? (
-                      <div className="flex items-center gap-2">
-                        {isVerifying ? (
-                          <Badge variant="outline" className="gap-1 text-xs">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Verifying...
-                          </Badge>
-                        ) : verificationResult ? (
-                          <>
-                            <Badge 
-                              variant={verificationResult.success ? "default" : "destructive"}
-                              className="gap-1 text-xs"
-                            >
-                              {verificationResult.success ? (
-                                <>
-                                  <CheckCircle2 className="h-3 w-3" />
-                                  Verified
-                                </>
-                              ) : (
-                                <>
-                                  <XCircle className="h-3 w-3" />
-                                  Failed
-                                </>
-                              )}
-                            </Badge>
-                            {verificationResult.verifiedAt && (
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(verificationResult.verifiedAt).toLocaleTimeString()}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <Badge variant="outline" className="gap-1 text-xs text-muted-foreground">
-                            <AlertCircle className="h-3 w-3" />
-                            Not Verified
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">N/A</span>
-                    )}
+                    <BlobVerificationStatus
+                      isEncrypted={encrypted}
+                      isVerifying={isVerifying}
+                      verificationResult={verificationResult}
+                      onVerify={() => handleVerifyFile(file)}
+                      showButton={false}
+                    />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
@@ -611,7 +731,7 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleVerifyFile(file)}
-                          disabled={isVerifying}
+                          disabled={isVerifying || isDownloading}
                           className="hover:bg-primary/10 hover:text-primary transition-all duration-200 hover:scale-110"
                           title="Verify file integrity"
                         >
@@ -628,6 +748,7 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
                           variant="ghost"
                           size="icon"
                           onClick={() => handlePreview(file)}
+                          disabled={isDownloading}
                           className="hover:bg-primary/10 hover:text-primary transition-all duration-200 hover:scale-110"
                           title="Preview file"
                         >
@@ -640,6 +761,7 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleShare(file)}
+                          disabled={isDownloading}
                           className="hover:bg-primary/10 hover:text-primary transition-all duration-200 hover:scale-110"
                           title="Share file"
                         >
@@ -651,6 +773,7 @@ export const FileListTable = ({ files, onRefresh }: FileListTableProps) => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(file)}
+                        disabled={isDownloading}
                         className="hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-110"
                         title={corrupted ? "Delete corrupted file" : "Delete file"}
                       >

@@ -12,6 +12,11 @@ export interface LocalFileMetadata {
   uploadedAt: Date;
   visibility: 'public' | 'private';
   allowedWallets: string[];
+  isEncrypted?: boolean;
+  hasSealMetadata?: boolean;
+  sealMetadataKey?: string;
+  lastVerified?: Date;
+  verificationStatus?: 'verified' | 'failed' | 'pending';
 }
 
 const LOCAL_FILES_KEY = 'walrusbox_local_files';

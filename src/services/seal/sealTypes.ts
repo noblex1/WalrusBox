@@ -139,7 +139,11 @@ export enum SealErrorType {
   RPC_ERROR = 'RPC_ERROR',
   NETWORK_ERROR = 'NETWORK_ERROR',
   INVALID_CONFIG_ERROR = 'INVALID_CONFIG_ERROR',
-  TIMEOUT_ERROR = 'TIMEOUT_ERROR'
+  TIMEOUT_ERROR = 'TIMEOUT_ERROR',
+  BLOB_NOT_FOUND = 'BLOB_NOT_FOUND',
+  METADATA_CORRUPTED = 'METADATA_CORRUPTED',
+  METADATA_MISSING = 'METADATA_MISSING',
+  PARTIAL_DOWNLOAD_FAILURE = 'PARTIAL_DOWNLOAD_FAILURE'
 }
 
 /**
@@ -161,6 +165,33 @@ export class SealError extends Error {
       Error.captureStackTrace(this, SealError);
     }
   }
+}
+
+/**
+ * Recovery action types
+ */
+export type RecoveryAction = 'retry' | 'report' | 'delete' | 'dismiss';
+
+/**
+ * Recovery option for error handling
+ */
+export interface RecoveryOption {
+  action: RecoveryAction;
+  label: string;
+  description: string;
+  primary?: boolean;
+}
+
+/**
+ * Blob not found error with recovery options
+ */
+export interface BlobNotFoundError extends SealError {
+  type: SealErrorType.BLOB_NOT_FOUND;
+  blobId: string;
+  fileId: string;
+  fileName?: string;
+  chunkIndex?: number;
+  recoveryOptions: RecoveryOption[];
 }
 
 /**

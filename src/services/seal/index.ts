@@ -27,6 +27,13 @@ export { sealChunkingService, SealChunkingService } from './sealChunking';
 // Storage
 export { sealStorageService, SealStorageService } from './sealStorage';
 
+// Metadata
+export {
+  sealMetadataService,
+  SealMetadataService,
+  type BlobVerificationResult
+} from './sealMetadata';
+
 // File Type Detection
 export {
   isEncrypted,

@@ -1,7 +1,7 @@
 // Seal Error Handler
 // Comprehensive error handling utilities for Seal operations
 
-import { SealError, SealErrorType } from './sealTypes';
+import { SealError, SealErrorType, RecoveryOption, BlobNotFoundError } from './sealTypes';
 
 /**
  * Error category for grouping related errors
@@ -31,7 +31,11 @@ export const ERROR_MESSAGES: Record<SealErrorType, string> = {
   [SealErrorType.RPC_ERROR]: 'Failed to connect to the blockchain network. Please check your connection and try again.',
   [SealErrorType.NETWORK_ERROR]: 'Network connection failed. Please check your internet connection and try again.',
   [SealErrorType.INVALID_CONFIG_ERROR]: 'Invalid configuration detected. Please check your environment settings.',
-  [SealErrorType.TIMEOUT_ERROR]: 'Operation timed out. The network may be slow or unavailable. Please try again.'
+  [SealErrorType.TIMEOUT_ERROR]: 'Operation timed out. The network may be slow or unavailable. Please try again.',
+  [SealErrorType.BLOB_NOT_FOUND]: 'This file is no longer available on the storage network. The data may have expired or been removed.',
+  [SealErrorType.METADATA_CORRUPTED]: 'File metadata is corrupted. Unable to download this file.',
+  [SealErrorType.METADATA_MISSING]: 'File metadata not found. This file cannot be downloaded.',
+  [SealErrorType.PARTIAL_DOWNLOAD_FAILURE]: 'Some parts of the file could not be downloaded. The file may be incomplete on the storage network.'
 };
 
 /**
@@ -49,7 +53,11 @@ export const ERROR_CATEGORIES: Record<SealErrorType, ErrorCategory> = {
   [SealErrorType.RPC_ERROR]: ErrorCategory.NETWORK,
   [SealErrorType.NETWORK_ERROR]: ErrorCategory.NETWORK,
   [SealErrorType.INVALID_CONFIG_ERROR]: ErrorCategory.CONFIGURATION,
-  [SealErrorType.TIMEOUT_ERROR]: ErrorCategory.TIMEOUT
+  [SealErrorType.TIMEOUT_ERROR]: ErrorCategory.TIMEOUT,
+  [SealErrorType.BLOB_NOT_FOUND]: ErrorCategory.STORAGE,
+  [SealErrorType.METADATA_CORRUPTED]: ErrorCategory.VALIDATION,
+  [SealErrorType.METADATA_MISSING]: ErrorCategory.VALIDATION,
+  [SealErrorType.PARTIAL_DOWNLOAD_FAILURE]: ErrorCategory.STORAGE
 };
 
 /**
@@ -256,6 +264,32 @@ export class SealErrorHandler {
         suggestions.push('Try again when the network is less busy');
         break;
 
+      case SealErrorType.BLOB_NOT_FOUND:
+        suggestions.push('The file data is no longer available on the storage network');
+        suggestions.push('The file may have expired or been removed');
+        suggestions.push('Consider removing this file from your list');
+        suggestions.push('Contact support if you believe this is an error');
+        break;
+
+      case SealErrorType.METADATA_CORRUPTED:
+        suggestions.push('The file metadata has been corrupted');
+        suggestions.push('This file cannot be recovered');
+        suggestions.push('Remove the file and re-upload if you have the original');
+        break;
+
+      case SealErrorType.METADATA_MISSING:
+        suggestions.push('File metadata was not found in storage');
+        suggestions.push('The file entry may be incomplete');
+        suggestions.push('Remove this file entry from your list');
+        break;
+
+      case SealErrorType.PARTIAL_DOWNLOAD_FAILURE:
+        suggestions.push('Some parts of the file could not be downloaded');
+        suggestions.push('Try downloading again');
+        suggestions.push('Check your internet connection');
+        suggestions.push('The file may be incomplete on the storage network');
+        break;
+
       default:
         suggestions.push('Try again');
         suggestions.push('Contact support if the issue persists');
@@ -271,6 +305,30 @@ export class SealErrorHandler {
    */
   private static inferErrorType(error: Error): SealErrorType {
     const message = error.message.toLowerCase();
+
+    // Blob not found errors (check first as it's most specific)
+    if (message.includes('404') || 
+        message.includes('blob not found') ||
+        message.includes('blob does not exist')) {
+      return SealErrorType.BLOB_NOT_FOUND;
+    }
+
+    // Metadata errors
+    if (message.includes('metadata')) {
+      if (message.includes('corrupt') || message.includes('invalid')) {
+        return SealErrorType.METADATA_CORRUPTED;
+      }
+      if (message.includes('missing') || message.includes('not found')) {
+        return SealErrorType.METADATA_MISSING;
+      }
+    }
+
+    // Partial download failure
+    if (message.includes('partial') || 
+        message.includes('incomplete download') ||
+        message.includes('some chunks failed')) {
+      return SealErrorType.PARTIAL_DOWNLOAD_FAILURE;
+    }
 
     // Network errors
     if (message.includes('network') || 
@@ -356,10 +414,268 @@ export class SealErrorHandler {
       SealErrorType.RPC_ERROR,
       SealErrorType.UPLOAD_ERROR,
       SealErrorType.DOWNLOAD_ERROR,
-      SealErrorType.TIMEOUT_ERROR
+      SealErrorType.TIMEOUT_ERROR,
+      SealErrorType.PARTIAL_DOWNLOAD_FAILURE
     ];
 
     return retryableTypes.includes(type);
+  }
+
+  /**
+   * Categorize error to distinguish network vs missing blob errors
+   * @param error - Error to categorize
+   * @param statusCode - HTTP status code if available
+   * @returns Categorized error type
+   */
+  static categorizeDownloadError(error: unknown, statusCode?: number): SealErrorType {
+    // 404 status code indicates blob not found
+    if (statusCode === 404) {
+      return SealErrorType.BLOB_NOT_FOUND;
+    }
+
+    // Check if it's already a SealError
+    if (error instanceof SealError) {
+      return error.type;
+    }
+
+    // Analyze error message for categorization
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+
+      // Blob not found indicators
+      if (message.includes('404') || 
+          message.includes('not found') || 
+          message.includes('does not exist')) {
+        return SealErrorType.BLOB_NOT_FOUND;
+      }
+
+      // Metadata issues
+      if (message.includes('metadata') && message.includes('corrupt')) {
+        return SealErrorType.METADATA_CORRUPTED;
+      }
+
+      if (message.includes('metadata') && 
+          (message.includes('missing') || message.includes('not found'))) {
+        return SealErrorType.METADATA_MISSING;
+      }
+
+      // Partial download failure
+      if (message.includes('partial') || 
+          message.includes('incomplete') ||
+          message.includes('some chunks')) {
+        return SealErrorType.PARTIAL_DOWNLOAD_FAILURE;
+      }
+
+      // Network errors
+      if (message.includes('network') || 
+          message.includes('connection') ||
+          message.includes('timeout')) {
+        return SealErrorType.NETWORK_ERROR;
+      }
+    }
+
+    // Default to download error
+    return SealErrorType.DOWNLOAD_ERROR;
+  }
+
+  /**
+   * Create a BlobNotFoundError with recovery options
+   * @param blobId - Blob ID that was not found
+   * @param fileId - File ID associated with the blob
+   * @param fileName - Optional file name
+   * @param chunkIndex - Optional chunk index for multi-chunk files
+   * @returns BlobNotFoundError instance
+   */
+  static createBlobNotFoundError(
+    blobId: string,
+    fileId: string,
+    fileName?: string,
+    chunkIndex?: number
+  ): BlobNotFoundError {
+    const message = chunkIndex !== undefined
+      ? `Blob not found for chunk ${chunkIndex} of file "${fileName || fileId}"`
+      : `Blob not found for file "${fileName || fileId}"`;
+
+    const recoveryOptions = this.generateRecoveryOptions(SealErrorType.BLOB_NOT_FOUND);
+
+    const error = new SealError(
+      SealErrorType.BLOB_NOT_FOUND,
+      message,
+      undefined,
+      false, // Not retryable - blob doesn't exist
+      {
+        blobId,
+        fileId,
+        fileName,
+        chunkIndex
+      }
+    ) as BlobNotFoundError;
+
+    error.blobId = blobId;
+    error.fileId = fileId;
+    error.fileName = fileName;
+    error.chunkIndex = chunkIndex;
+    error.recoveryOptions = recoveryOptions;
+
+    return error;
+  }
+
+  /**
+   * Generate recovery options based on error type
+   * @param errorType - Type of error
+   * @param context - Additional context
+   * @returns Array of recovery options
+   */
+  static generateRecoveryOptions(
+    errorType: SealErrorType,
+    context?: Record<string, unknown>
+  ): RecoveryOption[] {
+    const options: RecoveryOption[] = [];
+
+    switch (errorType) {
+      case SealErrorType.BLOB_NOT_FOUND:
+        options.push({
+          action: 'delete',
+          label: 'Remove File',
+          description: 'Remove this file from your list since it is no longer available',
+          primary: true
+        });
+        options.push({
+          action: 'report',
+          label: 'Report Issue',
+          description: 'Report this issue to help us investigate'
+        });
+        break;
+
+      case SealErrorType.METADATA_CORRUPTED:
+        options.push({
+          action: 'delete',
+          label: 'Remove File',
+          description: 'Remove this corrupted file from your list',
+          primary: true
+        });
+        options.push({
+          action: 'report',
+          label: 'Report Issue',
+          description: 'Report this corruption issue'
+        });
+        break;
+
+      case SealErrorType.METADATA_MISSING:
+        options.push({
+          action: 'delete',
+          label: 'Remove File',
+          description: 'Remove this file entry since metadata is missing',
+          primary: true
+        });
+        break;
+
+      case SealErrorType.PARTIAL_DOWNLOAD_FAILURE:
+        options.push({
+          action: 'retry',
+          label: 'Retry Download',
+          description: 'Try downloading the file again',
+          primary: true
+        });
+        options.push({
+          action: 'delete',
+          label: 'Remove File',
+          description: 'Remove this file if the issue persists'
+        });
+        options.push({
+          action: 'report',
+          label: 'Report Issue',
+          description: 'Report this download issue'
+        });
+        break;
+
+      case SealErrorType.NETWORK_ERROR:
+      case SealErrorType.TIMEOUT_ERROR:
+      case SealErrorType.DOWNLOAD_ERROR:
+        options.push({
+          action: 'retry',
+          label: 'Retry',
+          description: 'Try the operation again',
+          primary: true
+        });
+        options.push({
+          action: 'dismiss',
+          label: 'Dismiss',
+          description: 'Close this error message'
+        });
+        break;
+
+      case SealErrorType.DECRYPTION_ERROR:
+        options.push({
+          action: 'retry',
+          label: 'Retry',
+          description: 'Try decrypting again'
+        });
+        options.push({
+          action: 'report',
+          label: 'Report Issue',
+          description: 'Report this decryption issue',
+          primary: true
+        });
+        break;
+
+      default:
+        options.push({
+          action: 'dismiss',
+          label: 'Dismiss',
+          description: 'Close this error message',
+          primary: true
+        });
+        if (this.isRetryableErrorType(errorType)) {
+          options.unshift({
+            action: 'retry',
+            label: 'Retry',
+            description: 'Try the operation again',
+            primary: true
+          });
+        }
+    }
+
+    return options;
+  }
+
+  /**
+   * Check if error is a missing blob error (404)
+   * @param error - Error to check
+   * @returns True if blob not found
+   */
+  static isBlobNotFoundError(error: unknown): boolean {
+    if (error instanceof SealError) {
+      return error.type === SealErrorType.BLOB_NOT_FOUND;
+    }
+    return false;
+  }
+
+  /**
+   * Check if error is a metadata error
+   * @param error - Error to check
+   * @returns True if metadata error
+   */
+  static isMetadataError(error: unknown): boolean {
+    if (error instanceof SealError) {
+      return error.type === SealErrorType.METADATA_CORRUPTED ||
+             error.type === SealErrorType.METADATA_MISSING;
+    }
+    return false;
+  }
+
+  /**
+   * Check if error is a network-related error
+   * @param error - Error to check
+   * @returns True if network error
+   */
+  static isNetworkError(error: unknown): boolean {
+    if (error instanceof SealError) {
+      return error.type === SealErrorType.NETWORK_ERROR ||
+             error.type === SealErrorType.RPC_ERROR ||
+             error.type === SealErrorType.TIMEOUT_ERROR;
+    }
+    return false;
   }
 
   /**

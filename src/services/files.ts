@@ -428,4 +428,335 @@ export const filesService = {
       return fileFolderId === folderId;
     });
   },
+
+  /**
+   * Download an encrypted file with Seal
+   * @param fileId - File identifier
+   * @param options - Download options
+   * @returns Downloaded and decrypted file as Blob
+   */
+  downloadEncryptedFile: async (
+    fileId: string,
+    options?: DownloadEncryptedFileOptions
+  ): Promise<Blob> => {
+    const startTime = Date.now();
+    
+    try {
+      console.log(`🔽 Starting encrypted file download: ${fileId}`);
+      
+      // Import Seal services dynamically
+      const { sealMetadataService } = await import('./seal/sealMetadata');
+      const { sealStorageService } = await import('./seal/sealStorage');
+      const { sealErrorHandler } = await import('./seal/sealErrorHandler');
+      
+      // Step 1: Retrieve Seal metadata
+      options?.onProgress?.({
+        stage: 'loading_metadata',
+        percentage: 0,
+        message: 'Loading file metadata...'
+      });
+      
+      const metadata = await sealMetadataService.getSealMetadata(fileId);
+      
+      if (!metadata) {
+        throw new Error(`Seal metadata not found for file: ${fileId}`);
+      }
+      
+      console.log(`✅ Loaded Seal metadata for: ${metadata.fileName}`);
+      
+      // Step 2: Validate metadata
+      options?.onProgress?.({
+        stage: 'validating',
+        percentage: 10,
+        message: 'Validating file metadata...'
+      });
+      
+      const isValid = sealMetadataService.validateSealMetadata(metadata);
+      
+      if (!isValid) {
+        throw new Error(`Invalid Seal metadata for file: ${fileId}`);
+      }
+      
+      console.log(`✅ Metadata validation passed`);
+      
+      // Step 3: Optional blob verification
+      if (options?.verifyBeforeDownload !== false) {
+        options?.onProgress?.({
+          stage: 'verifying',
+          percentage: 20,
+          message: 'Verifying file availability...'
+        });
+        
+        const verificationResult = await sealMetadataService.verifyBlobsExist(metadata);
+        
+        if (!verificationResult.allBlobsExist) {
+          const missingBlobIds = verificationResult.missingBlobs.join(', ');
+          console.error(`❌ Missing blobs for file ${fileId}:`, verificationResult.missingBlobs);
+          
+          throw new Error(
+            `File is not available on storage network. Missing blobs: ${missingBlobIds}`
+          );
+        }
+        
+        console.log(`✅ All blobs verified (${verificationResult.verifiedBlobs.length} blobs)`);
+      }
+      
+      // Step 4: Download and decrypt file
+      options?.onProgress?.({
+        stage: 'downloading',
+        percentage: 30,
+        message: 'Downloading file...'
+      });
+      
+      // Get encryption key from options or localStorage
+      let encryptionKey = options?.encryptionKey;
+      
+      if (!encryptionKey && metadata.encryptionKeyId) {
+        // Try to retrieve key from localStorage
+        const storedKey = localStorage.getItem(`seal_key_${metadata.encryptionKeyId}`);
+        if (storedKey) {
+          encryptionKey = storedKey;
+        }
+      }
+      
+      if (!encryptionKey) {
+        throw new Error('Encryption key not found. Cannot decrypt file.');
+      }
+      
+      // Create download options with progress tracking
+      const downloadOptions = {
+        decrypt: true,
+        encryptionKey,
+        verifyIntegrity: options?.verifyIntegrity !== false,
+        onProgress: (progress: any) => {
+          // Map download progress to our progress callback
+          let percentage = 30;
+          let message = 'Downloading file...';
+          
+          switch (progress.stage) {
+            case 'downloading':
+              percentage = 30 + Math.floor(progress.percentage * 0.4); // 30-70%
+              message = `Downloading chunk ${progress.currentChunk || 0}/${progress.totalChunks || 1}...`;
+              break;
+            case 'reassembling':
+              percentage = 70;
+              message = 'Reassembling file...';
+              break;
+            case 'decrypting':
+              percentage = 85;
+              message = 'Decrypting file...';
+              break;
+            case 'complete':
+              percentage = 100;
+              message = 'Download complete';
+              break;
+            case 'error':
+              percentage = 0;
+              message = progress.error || 'Download failed';
+              break;
+          }
+          
+          options?.onProgress?.({
+            stage: progress.stage,
+            percentage,
+            message,
+            currentChunk: progress.currentChunk,
+            totalChunks: progress.totalChunks,
+            bytesDownloaded: progress.bytesDownloaded,
+            totalBytes: progress.totalBytes
+          });
+        }
+      };
+      
+      // Set timeout if specified
+      let timeoutId: NodeJS.Timeout | undefined;
+      let downloadPromise: Promise<Blob>;
+      
+      if (options?.timeout && options.timeout > 0) {
+        // Create timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error(`Download timeout after ${options.timeout}ms`));
+          }, options.timeout);
+        });
+        
+        // Race between download and timeout
+        downloadPromise = Promise.race([
+          sealStorageService.downloadFile(metadata, downloadOptions),
+          timeoutPromise
+        ]);
+      } else {
+        downloadPromise = sealStorageService.downloadFile(metadata, downloadOptions);
+      }
+      
+      const blob = await downloadPromise;
+      
+      // Clear timeout if it was set
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
+      // Step 5: Complete
+      options?.onProgress?.({
+        stage: 'complete',
+        percentage: 100,
+        message: 'Download complete'
+      });
+      
+      const duration = Date.now() - startTime;
+      console.log(`✅ Encrypted file download complete in ${duration}ms:`, {
+        fileId,
+        fileName: metadata.fileName,
+        size: blob.size
+      });
+      
+      return blob;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ Failed to download encrypted file ${fileId}:`, errorMessage);
+      
+      // Report error through progress callback
+      options?.onProgress?.({
+        stage: 'error',
+        percentage: 0,
+        message: errorMessage,
+        error: errorMessage
+      });
+      
+      // Re-throw with more context
+      throw new Error(`Failed to download encrypted file: ${errorMessage}`);
+    }
+  },
+
+  /**
+   * Verify file availability before download
+   * @param fileId - File identifier
+   * @returns Availability result with details
+   */
+  verifyFileAvailability: async (
+    fileId: string
+  ): Promise<FileAvailabilityResult> => {
+    try {
+      console.log(`🔍 Verifying file availability: ${fileId}`);
+      
+      // Import Seal services dynamically
+      const { sealMetadataService } = await import('./seal/sealMetadata');
+      
+      // Load metadata
+      const metadata = await sealMetadataService.getSealMetadata(fileId);
+      
+      if (!metadata) {
+        return {
+          available: false,
+          reason: 'Metadata not found',
+          canRecover: false
+        };
+      }
+      
+      // Validate metadata
+      const isValid = sealMetadataService.validateSealMetadata(metadata);
+      
+      if (!isValid) {
+        return {
+          available: false,
+          reason: 'Metadata is corrupted or incomplete',
+          canRecover: false
+        };
+      }
+      
+      // Verify blobs exist
+      const verificationResult = await sealMetadataService.verifyBlobsExist(metadata);
+      
+      if (!verificationResult.allBlobsExist) {
+        return {
+          available: false,
+          reason: `Missing ${verificationResult.missingBlobs.length} blob(s) on storage network`,
+          missingBlobs: verificationResult.missingBlobs,
+          canRecover: false
+        };
+      }
+      
+      console.log(`✅ File is available: ${fileId}`);
+      
+      return {
+        available: true,
+        canRecover: true
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ Failed to verify file availability for ${fileId}:`, errorMessage);
+      
+      return {
+        available: false,
+        reason: errorMessage,
+        canRecover: true // Network errors are potentially recoverable
+      };
+    }
+  },
 };
+
+/**
+ * Download options for encrypted files
+ */
+export interface DownloadEncryptedFileOptions {
+  /** Whether to verify blob existence before download (default: true) */
+  verifyBeforeDownload?: boolean;
+  
+  /** Encryption key for decryption (if not provided, will try to load from localStorage) */
+  encryptionKey?: string;
+  
+  /** Progress callback */
+  onProgress?: (progress: DownloadProgress) => void;
+  
+  /** Timeout in milliseconds (0 or undefined = no timeout) */
+  timeout?: number;
+  
+  /** Whether to verify file integrity after download (default: true) */
+  verifyIntegrity?: boolean;
+}
+
+/**
+ * Download progress information
+ */
+export interface DownloadProgress {
+  /** Current stage of download */
+  stage: 'loading_metadata' | 'validating' | 'verifying' | 'downloading' | 'reassembling' | 'decrypting' | 'complete' | 'error';
+  
+  /** Progress percentage (0-100) */
+  percentage: number;
+  
+  /** Human-readable message */
+  message: string;
+  
+  /** Current chunk being downloaded (for multi-chunk files) */
+  currentChunk?: number;
+  
+  /** Total number of chunks */
+  totalChunks?: number;
+  
+  /** Bytes downloaded so far */
+  bytesDownloaded?: number;
+  
+  /** Total bytes to download */
+  totalBytes?: number;
+  
+  /** Error message if stage is 'error' */
+  error?: string;
+}
+
+/**
+ * File availability result
+ */
+export interface FileAvailabilityResult {
+  /** Whether the file is available for download */
+  available: boolean;
+  
+  /** Reason if not available */
+  reason?: string;
+  
+  /** List of missing blob IDs */
+  missingBlobs?: string[];
+  
+  /** Whether the issue can potentially be recovered */
+  canRecover?: boolean;
+}

@@ -555,6 +555,15 @@ export class StorageService {
     });
   }
 
+  /**
+   * Save a file to IndexedDB for caching (convenience method)
+   * @param id - File/object ID
+   * @param file - File object to cache
+   */
+  async saveToIndexedDB(id: string, file: File): Promise<void> {
+    return this.storeBlob(id, file);
+  }
+
   async getBlob(id: string): Promise<Blob | null> {
     if (!this.db) await this.init();
 

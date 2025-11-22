@@ -10,6 +10,7 @@ import { FileListTable } from '@/components/FileListTable';
 import { filesService, FileMetadata } from '@/services/files';
 import { favoritesService } from '@/services/favorites';
 import { exportService } from '@/services/export';
+import { sealMetadataService } from '@/services/seal/sealMetadata';
 import { useFileFilter } from '@/hooks/useFileFilter';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,15 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (account?.address) {
+      // Run metadata migration once on mount
+      sealMetadataService.migrateOldMetadata().then(count => {
+        if (count > 0) {
+          console.log(`✅ Migrated ${count} Seal metadata entries to new format`);
+        }
+      }).catch(error => {
+        console.error('❌ Metadata migration failed:', error);
+      });
+      
       loadFiles(account.address);
     } else {
       setFiles([]);

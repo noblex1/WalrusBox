@@ -404,9 +404,206 @@ export class SealErrorLogger {
       SealErrorType.RPC_ERROR,
       SealErrorType.UPLOAD_ERROR,
       SealErrorType.DOWNLOAD_ERROR,
-      SealErrorType.TIMEOUT_ERROR
+      SealErrorType.TIMEOUT_ERROR,
+      SealErrorType.PARTIAL_DOWNLOAD_FAILURE
     ];
     return retryableTypes.includes(type);
+  }
+
+  /**
+   * Log a failed download attempt with detailed information
+   * @param fileId - File ID that failed to download
+   * @param fileName - File name
+   * @param error - Error that occurred
+   * @param blobId - Blob ID that failed (if applicable)
+   * @param chunkIndex - Chunk index that failed (if applicable)
+   */
+  static logDownloadFailure(
+    fileId: string,
+    fileName: string,
+    error: unknown,
+    blobId?: string,
+    chunkIndex?: number
+  ): void {
+    const context: Record<string, unknown> = {
+      fileId,
+      fileName,
+      operation: 'download',
+      blobId,
+      chunkIndex
+    };
+
+    this.logError(error, 'download', context);
+
+    // Track download failure statistics
+    this.trackDownloadFailure(fileId, error);
+  }
+
+  /**
+   * Track download failure statistics
+   * @param fileId - File ID
+   * @param error - Error that occurred
+   */
+  private static trackDownloadFailure(fileId: string, error: unknown): void {
+    try {
+      const sealError = sealErrorHandler.toSealError(error);
+      const key = `download_failures_${fileId}`;
+      
+      const stored = localStorage.getItem(key);
+      const failures = stored ? JSON.parse(stored) : [];
+      
+      failures.push({
+        timestamp: new Date().toISOString(),
+        errorType: sealError.type,
+        message: sealError.message
+      });
+
+      // Keep only last 10 failures per file
+      const trimmed = failures.slice(-10);
+      
+      localStorage.setItem(key, JSON.stringify(trimmed));
+    } catch (err) {
+      console.error('Failed to track download failure:', err);
+    }
+  }
+
+  /**
+   * Get download failure count for a file
+   * @param fileId - File ID
+   * @returns Number of failed download attempts
+   */
+  static getDownloadFailureCount(fileId: string): number {
+    try {
+      const key = `download_failures_${fileId}`;
+      const stored = localStorage.getItem(key);
+      if (!stored) return 0;
+      
+      const failures = JSON.parse(stored);
+      return failures.length;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Get download failure history for a file
+   * @param fileId - File ID
+   * @returns Array of failure records
+   */
+  static getDownloadFailureHistory(fileId: string): Array<{
+    timestamp: string;
+    errorType: SealErrorType;
+    message: string;
+  }> {
+    try {
+      const key = `download_failures_${fileId}`;
+      const stored = localStorage.getItem(key);
+      if (!stored) return [];
+      
+      return JSON.parse(stored);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Clear download failure history for a file
+   * @param fileId - File ID
+   */
+  static clearDownloadFailureHistory(fileId: string): void {
+    try {
+      const key = `download_failures_${fileId}`;
+      localStorage.removeItem(key);
+    } catch (err) {
+      console.error('Failed to clear download failure history:', err);
+    }
+  }
+
+  /**
+   * Log missing blob with detailed information
+   * @param blobId - Blob ID that was not found
+   * @param fileId - File ID associated with the blob
+   * @param fileName - File name
+   * @param metadata - Additional metadata
+   */
+  static logMissingBlob(
+    blobId: string,
+    fileId: string,
+    fileName: string,
+    metadata?: Record<string, unknown>
+  ): void {
+    const context: Record<string, unknown> = {
+      blobId,
+      fileId,
+      fileName,
+      operation: 'download',
+      errorType: 'blob_not_found',
+      ...metadata
+    };
+
+    const error = sealErrorHandler.createBlobNotFoundError(
+      blobId,
+      fileId,
+      fileName
+    );
+
+    this.logError(error, 'download', context);
+
+    // Also track in separate missing blobs log
+    this.trackMissingBlob(blobId, fileId, fileName);
+  }
+
+  /**
+   * Track missing blob for investigation
+   * @param blobId - Blob ID
+   * @param fileId - File ID
+   * @param fileName - File name
+   */
+  private static trackMissingBlob(
+    blobId: string,
+    fileId: string,
+    fileName: string
+  ): void {
+    try {
+      const key = 'missing_blobs';
+      const stored = localStorage.getItem(key);
+      const missingBlobs = stored ? JSON.parse(stored) : [];
+      
+      missingBlobs.push({
+        blobId,
+        fileId,
+        fileName,
+        timestamp: new Date().toISOString(),
+        reported: false
+      });
+
+      // Keep only last 50 missing blobs
+      const trimmed = missingBlobs.slice(-50);
+      
+      localStorage.setItem(key, JSON.stringify(trimmed));
+    } catch (err) {
+      console.error('Failed to track missing blob:', err);
+    }
+  }
+
+  /**
+   * Get list of missing blobs
+   * @returns Array of missing blob records
+   */
+  static getMissingBlobs(): Array<{
+    blobId: string;
+    fileId: string;
+    fileName: string;
+    timestamp: string;
+    reported: boolean;
+  }> {
+    try {
+      const key = 'missing_blobs';
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
   }
 
   /**
